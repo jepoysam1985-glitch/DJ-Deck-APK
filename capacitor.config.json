@@ -1,0 +1,8 @@
+{
+  "appId": "com.djdeck.app",
+  "appName": "DJ Deck",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  }
+}
