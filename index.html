@@ -906,12 +906,20 @@ async function coverFile(f){try{const rd=async(a,z)=>new Uint8Array(await f.slic
 const cov=new Map();
 async function getCover(t){if(cov.has(t.key))return cov.get(t.key);let u=null;try{u=await coverFile(t.src.getFile?await t.src.getFile():t.src)}catch(e){}cov.set(t.key,u);return u}
 window.libCover=(i,f)=>coverFile(f).then(u=>{covers[i]=u;window.nowSync&&nowSync(i)});
-async function tagsFile(f){try{const rd=async(a,z)=>new Uint8Array(await f.slice(a,z).arrayBuffer()),h=await rd(0,12);
-  if(asc(h,0,3)!=='ID3')return null;const v=h[3],b=await rd(0,Math.min(ss(h,6)+10,8e6));let p=10;const o={};if(b[5]&64)p+=v===4?ss(b,10):4+u32(b,10);
-  const dec=x=>{const e=x[0],d=x.subarray(1);const l=e===1?'utf-16':e===2?'utf-16be':e===3?'utf-8':'iso-8859-1';try{return new TextDecoder(l).decode(d).replace(/\0+$/,'').replace(/^\uFEFF/,'').trim()}catch(_){return ''}};
-  while(p+10<b.length){const id=asc(b,p,4);if(!/^[A-Z0-9]{4}$/.test(id))break;const n=v===4?ss(b,p+4):u32(b,p+4);
-    if(id==='TIT2')o.t=dec(b.subarray(p+10,p+10+n));else if(id==='TPE1')o.a=dec(b.subarray(p+10,p+10+n));p+=10+n}
-  return o}catch(e){return null}}
+async function tagsFile(f){const out={};try{
+  const h=new Uint8Array(await f.slice(0,10).arrayBuffer());if(h[0]!==0x49||h[1]!==0x44||h[2]!==0x33)return null;
+  const ver=h[3],size=(h[6]<<21)|(h[7]<<14)|(h[8]<<7)|h[9];
+  const b=new Uint8Array(await f.slice(10,10+Math.min(size,12*1024*1024)).arrayBuffer());let p=0;
+  if((h[5]&0x40)&&ver>=3)p=ver===4?((b[0]<<21)|(b[1]<<14)|(b[2]<<7)|b[3]):(((b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3])>>>0)+4;
+  const idL=ver===2?3:4,hL=ver===2?6:10;
+  const txt=(enc,x)=>{try{if(enc===1){const be=x[0]===0xFE&&x[1]===0xFF,le=x[0]===0xFF&&x[1]===0xFE;return new TextDecoder(be?'utf-16be':'utf-16le').decode(be||le?x.subarray(2):x)}if(enc===2)return new TextDecoder('utf-16be').decode(x);if(enc===3)return new TextDecoder('utf-8').decode(x);return new TextDecoder('windows-1252').decode(x)}catch(_){return ''}};
+  const cl=t=>t.split('\0')[0].replace(/\s+/g,' ').trim();
+  while(p+hL<=b.length&&b[p]!==0){const id=String.fromCharCode(...b.subarray(p,p+idL));
+    const fs=ver===2?(b[p+3]<<16)|(b[p+4]<<8)|b[p+5]:ver===4?(b[p+4]<<21)|(b[p+5]<<14)|(b[p+6]<<7)|b[p+7]:((b[p+4]<<24)|(b[p+5]<<16)|(b[p+6]<<8)|b[p+7])>>>0;
+    const st=p+hL,en=st+fs;if(fs<=0||en>b.length)break;const fr=b.subarray(st,en);
+    if(id==='TIT2'||id==='TT2')out.t=cl(txt(fr[0],fr.subarray(1)));else if(id==='TPE1'||id==='TP1')out.a=cl(txt(fr[0],fr.subarray(1)));
+    p=en}
+  }catch(e){}return out.t?out:null}
 window.libTags=f=>tagsFile(f);
 
 const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){const c=e.target;obs.unobserve(c);getCover(c._t).then(u=>{if(u){c.style.backgroundImage='url('+u+')';c.textContent=''}})}}),{root:list,rootMargin:'200px'});
@@ -1129,6 +1137,30 @@ const coverSmall=u=>new Promise(r=>{if(!u)return r('');const im=new Image();im.o
 function sitePost(o){const c=encCfg();if(!c.sitepw)return;const base=String(c.site||'https://jeiannefm.vercel.app').replace(/\/+$/,'');
   fetch(base+'/api/nowplaying',{method:'POST',headers:{'Content-Type':'application/json','x-admin-password':c.sitepw},body:JSON.stringify(o)})
    .then(r=>{if(r.status===401)flash('Website: maling password');else if(!r.ok)flash('Website: hindi na-save ('+r.status+')')}).catch(()=>{})}
+let npWarned=false;
+async function sendTitle(title){
+  const C=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.CapacitorHttp;
+  if(!C){if(!npWarned){npWarned=true;flash('Now-playing title needs the Android app (CapacitorHttp not found).')}return}
+  const c=encCfg(),headers={},tries=[],host=String(c.host||'').replace(/^https?:\/\//i,'').replace(/[\/\s].*$/,'');
+  const bases=String(c.port)==='443'?['https://'+host]:['https://'+host,'http://'+host+':'+c.port];
+  if((c.type||'icecast')==='icecast'){
+    const mt=String(c.mount||''),m=mt.startsWith('/')?mt:'/'+mt;
+    headers.Authorization='Basic '+btoa(unescape(encodeURIComponent((c.user||'source')+':'+c.pass)));
+    const mounts=[m];if(/\/source$/.test(m))mounts.push(m.replace(/\/source$/,''));else mounts.push(m+'/source');
+    for(const mm of mounts)for(const bs of bases)tries.push(bs+'/admin/metadata?mode=updinfo&charset=UTF-8&mount='+encodeURIComponent(mm)+'&song='+encodeURIComponent(title));
+  }else{
+    tries.push('http://'+host+':'+c.port+'/admin.cgi?pass='+encodeURIComponent(c.pass)+'&mode=updinfo&song='+encodeURIComponent(title)+(c.mount?'&sid='+encodeURIComponent(c.mount):''));
+  }
+  let last='';
+  for(const u of tries){
+    try{const r=await C.request({url:u,method:'GET',headers,connectTimeout:5000,readTimeout:5000});
+      if(r&&r.status<400){npWarned=false;flash('Now playing sent: '+title);return}
+      const body=r&&r.data?String(typeof r.data==='string'?r.data:JSON.stringify(r.data)).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,70):'';
+      if(!last)last='HTTP '+(r&&r.status)+(body?' '+body:'')+' @'+new URL(u).pathname.slice(0,40);
+    }catch(e){if(!last)last=(e&&e.message)||'network error'}
+  }
+  if(!npWarned){npWarned=true;flash('The server did not accept the title ('+last+').')}
+}
 async function nowSend(force){
   if(!air)return;
   let i=-1;if(nowI>=0&&audios[nowI]&&!audios[nowI].paused)i=nowI;else{const k=[0,1].find(x=>audios[x]&&!audios[x].paused);if(k!=null)i=k}
@@ -1136,10 +1168,7 @@ async function nowSend(force){
   const s=nowText(i);if(!s)return;
   const key=s+'|'+(covers[i]?1:0);if(!force&&key===nowLast)return;nowLast=key;
   const c=encCfg(),N=natP();
-  if(s!==nowLastT){nowLastT=s;
-    if(air&&air.nat&&N&&N.meta){
-      const pm=String(c.host).match(/^(https?):\/\//i),host=String(c.host).replace(/^https?:\/\//i,'').replace(/[\/\s].*$/,'');
-      try{await N.meta({type:c.type||'icecast',host,port:+c.port,mount:String(c.mount||''),user:c.user||'source',pass:c.pass,song:s,tls:!!(pm&&pm[1].toLowerCase()==='https')})}catch(e){}}}
+  if(s!==nowLastT){nowLastT=s;sendTitle(s)}
   if(c.sitepw){let cv='';const cu=covers[i];if(cu){cv=coverCache.get(cu);if(cv===undefined){cv=await coverSmall(cu);coverCache.set(cu,cv)}}
     sitePost({title:s,artist:(metas[i]&&metas[i].a)||'',cover:cv||''})}}
 window.nowPlay=i=>{nowI=i;nowSend()};
