@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'index.html'
       - 'www/**'
       - 'capacitor.config.json'
       - 'package.json'
-      - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: write
@@ -18,10 +18,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check www/index.html exists
+      - name: Prepare www/index.html
         run: |
+          mkdir -p www
+          if [ -f index.html ]; then cp index.html www/index.html; fi
           if [ ! -f www/index.html ]; then
-            echo "::error::www/index.html is missing. Upload your DJ Deck index.html into the www/ folder, then re-run."
+            echo "::error::index.html not found. Upload your DJ Deck index.html to the repo root, then re-run."
             exit 1
           fi
 
