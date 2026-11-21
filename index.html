@@ -1044,7 +1044,7 @@ card.innerHTML=`<div class="sth"><b>SETTINGS</b><div class="stx" id="stClose">CL
 <div class="stt"><div id="stS">STABLE</div><div id="stL">LOW</div></div></div><div class="stn" id="stNote"></div></div>
 <div class="stcard"><div class="str"><div style="flex:1"><h3>Quantize</h3><p>Hot cues snap to the beat.</p></div><div class="stsw" id="stQ"><i></i></div></div></div>
 <div class="stcard"><h3>Audio buffer</h3><p>Mas maliit = mas mabilis ang response pero mas madaling pumutok ang tunog sa mabagal na phone. AUTO = sundin ang Latency sa taas.</p><p id="stBI" style="margin-top:6px"></p><div class="stt" id="stB" style="margin-top:14px;display:inline-flex"></div><div class="stn" id="stNote2"></div></div>
-<div class="stcard"><h3>Encoder (para sa ON AIR)</h3><p>Kailangan ito para mag-open ang ON AIR. Pag walang naka-set na encoder, hindi mag-o-ON AIR.</p>
+<div class="stcard"><h3>Server (para sa GO LIVE)</h3><p>Pumili ng ICECAST o SHOUTCAST server. Kailangan ito para makapag-GO LIVE. Pag walang naka-set na server, hindi gagana ang GO LIVE.</p>
 <div class="stt" id="stET" style="margin-top:12px"><div data-v="icecast">ICECAST</div><div data-v="shoutcast">SHOUTCAST</div></div>
 <div class="stg"><div><label>Server / Host</label><input id="en_host" placeholder="link.zeno.fm" autocapitalize="off" autocomplete="off"></div>
 <div><label>Port</label><input id="en_port" type="number" placeholder="8000"></div>
@@ -1052,7 +1052,7 @@ card.innerHTML=`<div class="sth"><b>SETTINGS</b><div class="stx" id="stClose">CL
 <div><label>Username</label><input id="en_user" placeholder="source" autocapitalize="off"></div>
 <div><label>Password</label><input id="en_pass" type="password" placeholder="source password"></div>
 <div><label>Bitrate</label><select id="en_kbps"><option>64</option><option>96</option><option selected>128</option><option>192</option></select></div></div>
-<p id="stEI" style="margin-top:12px;color:#00e5ff"></p><div class="stdel stsv" id="stEs">SAVE ENCODER</div></div>
+<p id="stEI" style="margin-top:12px;color:#00e5ff"></p><div class="stdel stsv" id="stEs">SAVE SERVER</div></div>
 <div class="stcard"><div class="stlb">STORAGE</div><h3>BPM &amp; cover cache</h3><p>Naka-save na BPM scan at cover art para mabilis mag-load ulit. Safe i-clear — hindi nabubura ang mga kanta, playlist at settings.</p><p id="stCI" style="margin-top:6px;color:#00e5ff"></p><div class="stdel" id="stDel">CLEAR CACHE</div></div>`;
 let lat='low';try{lat=localStorage.getItem('dj_latency')||'low'}catch(e){}
 const q=i=>card.querySelector('#'+i),under={n:0,t:0,c:0};
@@ -1076,14 +1076,14 @@ q('stClose').addEventListener('pointerdown',stShut);q('stClose').addEventListene
 // Quantize toggle
 const qE=q('stQ');qE.classList.toggle('on',quantizeOn);
 qE.onclick=()=>{quantizeOn=!quantizeOn;qE.classList.toggle('on',quantizeOn);try{localStorage.setItem('dj_quantize',quantizeOn?'1':'0')}catch(e){}};
-// Encoder
+// Server (Icecast / Shoutcast)
 const eK=['host','port','mount','user','pass','kbps'];let eT='icecast';
 const eCfg=()=>{try{return JSON.parse(localStorage.getItem('dj_enc')||'{}')}catch(e){return {}}};
-function eInfo(){const c=eCfg();q('stEI').textContent=(c.host&&c.port&&c.pass&&(c.type==='shoutcast'||c.mount))?'Naka-set: '+c.type.toUpperCase()+' · '+c.host+':'+c.port+(c.type==='icecast'?'/'+String(c.mount).replace(/^\//,''):'')+' — pwede nang mag-ON AIR':'HINDI PA NAKA-SET — hindi mag-o-ON AIR'}
+function eInfo(){const c=eCfg();q('stEI').textContent=(c.host&&c.port&&c.pass&&(c.type==='shoutcast'||c.mount))?'Naka-set: '+c.type.toUpperCase()+' · '+c.host+':'+c.port+(c.type==='icecast'?'/'+String(c.mount).replace(/^\//,''):'')+' — pwede nang mag-GO LIVE':'HINDI PA NAKA-SET — hindi gagana ang GO LIVE'}
 function ePaint(){[...q('stET').children].forEach(d=>d.classList.toggle('on',d.dataset.v===eT));q('enMl').textContent=eT==='icecast'?'Mount (hal. /live)':'Stream ID (hal. 1)';q('en_mount').placeholder=eT==='icecast'?'/live':'1'}
 {const c=eCfg();eT=c.type||'icecast';eK.forEach(k=>{if(c[k]!=null)q('en_'+k).value=c[k]});ePaint();eInfo()}
 q('stET').onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v){eT=v;ePaint()}};
-q('stEs').onclick=()=>{const c={type:eT};eK.forEach(k=>c[k]=q('en_'+k).value.trim());try{localStorage.setItem('dj_enc',JSON.stringify(c))}catch(e){}eInfo();flash('Encoder na-save')};
+q('stEs').onclick=()=>{const c={type:eT};eK.forEach(k=>c[k]=q('en_'+k).value.trim());try{localStorage.setItem('dj_enc',JSON.stringify(c))}catch(e){}eInfo();flash('Server na-save')};
 // Audio buffer
 let bufV='auto';try{bufV=localStorage.getItem('dj_buffer')||'auto'}catch(e){}
 const bE=q('stB');bE.innerHTML=['auto','128','256','512','1024','2048'].map(v=>`<div data-v="${v}">${v==='auto'?'AUTO':v}</div>`).join('');
@@ -1105,37 +1105,49 @@ const gb=btn('',-50,458,100,42,()=>{});gb.style.flexDirection='column';gb.style.
 gb.innerHTML=gear+'<span style="font-size:11px;letter-spacing:.5px">SETTINGS</span>';gb.addEventListener('click',()=>{if(performance.now()-window.__stClosed<500)return;open()});
 })();
 
-// ===== REC (MP3) + ON AIR =====
+// ===== REC (MP3) + GO LIVE =====
 (function(){
 const css=document.createElement('style');css.textContent='.onair{background:#d4001a!important;color:#fff!important;animation:oa 1s infinite}@keyframes oa{50%{box-shadow:0 0 18px 4px #ff2a3a}}';document.head.appendChild(css);
 let lp=null;const loadLame=()=>window.lamejs?Promise.resolve(true):(lp=lp||new Promise(r=>{const x=document.createElement('script');x.src='https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';x.onload=()=>r(!!window.lamejs);x.onerror=()=>{lp=null;r(false)};document.head.appendChild(x);setTimeout(()=>r(!!window.lamejs),8000)}));
 loadLame();
 let rec=null,onAir=false;
-const recB=btn('● REC',-50,508,48,38,()=>toggleRec()),airB=btn('OFF AIR',2,508,48,38,()=>toggleAir());
+const recB=btn('● REC',-50,508,48,38,()=>toggleRec()),airB=btn('GO LIVE',2,508,48,38,()=>toggleAir());
 recB.style.fontSize=airB.style.fontSize='10px';recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';
 let air=null;
 const encCfg=()=>{try{return JSON.parse(localStorage.getItem('dj_enc')||'{}')}catch(e){return {}}};
 const encOK=c=>!!(c.host&&c.port&&c.pass&&(c.type==='shoutcast'||c.mount));
-function airOff(msg){const a=air;air=null;onAir=false;if(a){try{master.disconnect(a.sp)}catch(e){}try{a.sp.disconnect();a.mute.disconnect()}catch(e){}a.sp.onaudioprocess=null;try{a.ctrl.close()}catch(e){}}
-  airB.textContent='OFF AIR';airB.classList.remove('onair');flash(msg||'OFF AIR')}
-async function toggleAir(){
-  if(air||onAir)return airOff('OFF AIR');
-  const c=encCfg();
-  if(!encOK(c)){flash('ON AIR: walang encoder — i-set muna sa Settings → Encoder');return}
-  if(c.type==='shoutcast'){flash('SHOUTCAST: hindi kaya ng browser ang TCP source protocol nito — kailangan ng native plugin. Gamitin muna ang ICECAST.');return}
-  if(!ctx||!master){flash('ON AIR: mag-load muna ng kanta');return}
-  airB.textContent='...';if(!await loadLame()){airOff('ON AIR: walang MP3 encoder (kailangan ng internet minsan)');return}
-  const enc=new lamejs.Mp3Encoder(2,ctx.sampleRate,+c.kbps||128);let ctrl;const rs=new ReadableStream({start(x){ctrl=x}});
-  const sp=ctx.createScriptProcessor(4096,2,2),mute=ctx.createGain();mute.gain.value=0;
+function airOff(msg){const a=air;air=null;onAir=false;if(a){try{master.disconnect(a.sp)}catch(e){}try{a.sp.disconnect();a.mute.disconnect()}catch(e){}a.sp.onaudioprocess=null;if(a.nat){try{a.nat.close()}catch(e){}}else{try{a.ctrl.close()}catch(e){}}}
+  airB.textContent='GO LIVE';airB.classList.remove('onair');flash(msg||'LIVE stopped')}
+const natP=()=>{const C=window.Capacitor;return(C&&C.Plugins&&C.Plugins.TcpSource)||null};let natL=false;
+const b64=u=>{let t='';for(let i=0;i<u.length;i+=8192)t+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(t)};
+function mkSp(c,push){const enc=new lamejs.Mp3Encoder(2,ctx.sampleRate,+c.kbps||128),sp=ctx.createScriptProcessor(4096,2,2),mute=ctx.createGain();mute.gain.value=0;
   sp.onaudioprocess=e=>{const A=e.inputBuffer.getChannelData(0),B=e.inputBuffer.getChannelData(1),n=A.length,l=new Int16Array(n),r=new Int16Array(n);
     for(let i=0;i<n;i++){l[i]=Math.max(-1,Math.min(1,A[i]))*32767;r[i]=Math.max(-1,Math.min(1,B[i]))*32767}
-    const b=enc.encodeBuffer(l,r);if(b.length)try{ctrl.enqueue(new Uint8Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.length)))}catch(e){}};
-  master.connect(sp);sp.connect(mute);mute.connect(ctx.destination);air={sp,mute,ctrl};onAir=true;
-  const pm=String(c.host).match(/^(https?):\/\//i),host=String(c.host).replace(/^https?:\/\//i,'').replace(/[\/\s].*$/,''),url=(pm?pm[1].toLowerCase():'https')+'://'+host+':'+c.port+'/'+String(c.mount).replace(/^\//,'');
-  const to=setTimeout(()=>{if(air&&air.ctrl===ctrl&&!air.ok){air.ok=true;airB.textContent='ON AIR';airB.classList.add('onair');flash('ON AIR — nagpapadala sa '+host)}},1500);
+    const b=enc.encodeBuffer(l,r);if(b.length)push(new Uint8Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.length)))};
+  master.connect(sp);sp.connect(mute);mute.connect(ctx.destination);return{sp,mute}}
+async function toggleAir(){
+  if(air||onAir)return airOff('LIVE stopped');
+  const c=encCfg();
+  if(!encOK(c)){flash('GO LIVE: walang server — i-set muna sa Settings → Server (Icecast / Shoutcast)');return}
+  const N=natP();
+  if(c.type==='shoutcast'&&!N){flash('SHOUTCAST: gumagana lang sa APK (native TCP). Sa browser, gamitin ang ICECAST.');return}
+  if(!ctx||!master){flash('GO LIVE: mag-load muna ng kanta');return}
+  airB.textContent='...';if(!await loadLame()){airOff('GO LIVE: walang MP3 encoder (kailangan ng internet minsan)');return}
+  const pm=String(c.host).match(/^(https?):\/\//i),host=String(c.host).replace(/^https?:\/\//i,'').replace(/[\/\s].*$/,'');
+  if(N){
+    if(!natL){natL=true;try{N.addListener('closed',()=>{if(air)airOff('GO LIVE: nawala ang connection')})}catch(e){}}
+    try{await N.open({type:c.type,host,port:+c.port,mount:String(c.mount||''),user:c.user||'source',pass:c.pass,kbps:+c.kbps||128,tls:!!(pm&&pm[1].toLowerCase()==='https')})}
+    catch(err){airOff('GO LIVE: hindi maka-connect ('+(err&&(err.message||err.errorMessage)||err)+')');return}
+    const x=mkSp(c,u=>{N.write({data:b64(u)}).catch(()=>{})});
+    air={sp:x.sp,mute:x.mute,nat:N,ok:true};onAir=true;airB.textContent='LIVE';airB.classList.add('onair');flash('LIVE — nagpapadala sa '+c.type.toUpperCase()+' '+host);return}
+  let ctrl;const rs=new ReadableStream({start(x){ctrl=x}});
+  const x=mkSp(c,u=>{try{ctrl.enqueue(u)}catch(e){}});
+  air={sp:x.sp,mute:x.mute,ctrl};onAir=true;
+  const url=(pm?pm[1].toLowerCase():'https')+'://'+host+':'+c.port+'/'+String(c.mount).replace(/^\//,'');
+  const to=setTimeout(()=>{if(air&&air.ctrl===ctrl&&!air.ok){air.ok=true;airB.textContent='LIVE';airB.classList.add('onair');flash('LIVE — nagpapadala sa '+host)}},1500);
   fetch(url,{method:'PUT',headers:{'Authorization':'Basic '+btoa((c.user||'source')+':'+c.pass),'Content-Type':'audio/mpeg','Ice-Name':'DJ Deck','Ice-Public':'0'},body:rs,duplex:'half'})
-   .then(r=>{clearTimeout(to);if(!air||air.ctrl!==ctrl)return;if(!r.ok)throw new Error('HTTP '+r.status);air.ok=true;airB.textContent='ON AIR';airB.classList.add('onair');flash('ON AIR — naka-connect sa '+host)})
-   .catch(err=>{clearTimeout(to);if(air&&air.ctrl===ctrl)airOff('ON AIR: hindi maka-connect ('+(err&&err.message||err)+')')})}
+   .then(r=>{clearTimeout(to);if(!air||air.ctrl!==ctrl)return;if(!r.ok)throw new Error('HTTP '+r.status);air.ok=true;airB.textContent='LIVE';airB.classList.add('onair');flash('LIVE — naka-connect sa '+host)})
+   .catch(err=>{clearTimeout(to);if(air&&air.ctrl===ctrl)airOff('GO LIVE: hindi maka-connect ('+(err&&err.message||err)+')')})}
 const wav=(parts,sr)=>{let n=0;for(let i=0;i<parts.length;i+=2)n+=parts[i].length;const b=new ArrayBuffer(44+n*4),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
   w(0,'RIFF');v.setUint32(4,36+n*4,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,2,true);v.setUint32(24,sr,true);v.setUint32(28,sr*4,true);v.setUint16(32,4,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*4,true);
   let o=44;for(let i=0;i<parts.length;i+=2){const L=parts[i],R=parts[i+1];for(let k=0;k<L.length;k++){v.setInt16(o,L[k],true);v.setInt16(o+2,R[k],true);o+=4}}return new Blob([b],{type:'audio/wav'})};
