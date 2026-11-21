@@ -9,7 +9,10 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.HttpURLConnection;
 import java.net.Socket;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -149,6 +152,48 @@ public class TcpSourcePlugin extends Plugin {
       }
     });
     call.resolve();
+  }
+
+  @PluginMethod
+  public void meta(final PluginCall call) {
+    new Thread(() -> {
+      try {
+        String type = call.getString("type", "icecast");
+        String host = call.getString("host", "");
+        int port = call.getInt("port", 8000);
+        String mount = call.getString("mount", "");
+        String user = call.getString("user", "source");
+        String pass = call.getString("pass", "");
+        String song = call.getString("song", "");
+        boolean tls = call.getBoolean("tls", false);
+        boolean sc = "shoutcast".equals(type);
+        String base = (tls ? "https://" : "http://") + host + ":" + port;
+        String enc = URLEncoder.encode(song, "UTF-8");
+        String u;
+        String auth = null;
+        if (sc) {
+          u = base + "/admin.cgi?mode=updinfo&pass=" + URLEncoder.encode(pass, "UTF-8") + "&song=" + enc;
+          if (mount != null && !mount.isEmpty()) u += "&sid=" + URLEncoder.encode(mount, "UTF-8");
+        } else {
+          String m = (mount == null || mount.isEmpty()) ? "/" : (mount.startsWith("/") ? mount : "/" + mount);
+          u = base + "/admin/metadata?mode=updinfo&mount=" + URLEncoder.encode(m, "UTF-8") + "&charset=UTF-8&song=" + enc;
+          auth = "Basic " + Base64.encodeToString((user + ":" + pass).getBytes("UTF-8"), Base64.NO_WRAP);
+        }
+        HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+        c.setConnectTimeout(6000);
+        c.setReadTimeout(6000);
+        c.setRequestProperty("User-Agent", "DJDeck/1.0");
+        if (auth != null) c.setRequestProperty("Authorization", auth);
+        int code = c.getResponseCode();
+        c.disconnect();
+        JSObject r = new JSObject();
+        r.put("status", code);
+        if (code >= 200 && code < 300) call.resolve(r);
+        else call.reject("HTTP " + code);
+      } catch (Exception e) {
+        call.reject(e.getMessage() == null ? e.toString() : e.getMessage());
+      }
+    }).start();
   }
 
   @PluginMethod
