@@ -1067,7 +1067,7 @@ card.innerHTML=`<div class="sth"><b>SETTINGS</b><div class="stx" id="stClose">CL
 <div><label id="enMl">Mount (hal. /live)</label><input id="en_mount" placeholder="/mountpoint" autocapitalize="off"></div>
 <div><label>Username</label><input id="en_user" placeholder="source" autocapitalize="off"></div>
 <div><label>Password</label><input id="en_pass" type="password" placeholder="source password"></div>
-<div><label>Bitrate</label><select id="en_kbps"><option>64</option><option>96</option><option selected>128</option><option>192</option></select></div><div><label>Website (title/cover)</label><input id="en_site" placeholder="https://jeiannefm.vercel.app" autocapitalize="off" autocomplete="off"></div><div><label>Website password</label><input id="en_sitepw" type="password" placeholder="ADMIN_PASSWORD ng site"></div></div>
+<div><label>Bitrate</label><select id="en_kbps"><option>64</option><option>96</option><option selected>128</option><option>192</option></select></div></div>
 <p id="stEI" style="margin-top:12px;color:#00e5ff"></p><div class="stdel stsv" id="stEs">SAVE SERVER</div></div>
 <div class="stcard"><div class="stlb">STORAGE</div><h3>BPM &amp; cover cache</h3><p>Naka-save na BPM scan at cover art para mabilis mag-load ulit. Safe i-clear — hindi nabubura ang mga kanta, playlist at settings.</p><p id="stCI" style="margin-top:6px;color:#00e5ff"></p><div class="stdel" id="stDel">CLEAR CACHE</div></div>`;
 let lat='low';try{lat=localStorage.getItem('dj_latency')||'low'}catch(e){}
@@ -1093,7 +1093,7 @@ q('stClose').addEventListener('pointerdown',stShut);q('stClose').addEventListene
 const qE=q('stQ');qE.classList.toggle('on',quantizeOn);
 qE.onclick=()=>{quantizeOn=!quantizeOn;qE.classList.toggle('on',quantizeOn);try{localStorage.setItem('dj_quantize',quantizeOn?'1':'0')}catch(e){}};
 // Server (Icecast / Shoutcast)
-const eK=['host','port','mount','user','pass','kbps','site','sitepw'];let eT='icecast';
+const eK=['host','port','mount','user','pass','kbps'];let eT='icecast';
 const eCfg=()=>{try{return JSON.parse(localStorage.getItem('dj_enc')||'{}')}catch(e){return {}}};
 function eInfo(){const c=eCfg();q('stEI').textContent=(c.host&&c.port&&c.pass&&(c.type==='shoutcast'||c.mount))?'Naka-set: '+c.type.toUpperCase()+' · '+c.host+':'+c.port+(c.type==='icecast'?'/'+String(c.mount).replace(/^\//,''):'')+' — pwede nang mag-GO LIVE':'HINDI PA NAKA-SET — hindi gagana ang GO LIVE'}
 function ePaint(){[...q('stET').children].forEach(d=>d.classList.toggle('on',d.dataset.v===eT));q('enMl').textContent=eT==='icecast'?'Mount (hal. /live)':'Stream ID (hal. 1)';q('en_mount').placeholder=eT==='icecast'?'/live':'1'}
@@ -1131,12 +1131,8 @@ const recB=btn('● REC',-50,508,48,38,()=>toggleRec()),airB=btn('GO LIVE',2,508
 recB.style.fontSize=airB.style.fontSize='10px';recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';
 let air=null;
 // ---- NOW PLAYING -> server metadata (title na lalabas sa website) ----
-let nowI=-1,nowLast='',nowLastT='';const coverCache=new Map();
+let nowI=-1,nowLast='',nowLastT='';
 const nowText=i=>{const m=metas[i];return m&&m.t?(m.a?m.a+' - ':'')+m.t:(titles[i]||'')};
-const coverSmall=u=>new Promise(r=>{if(!u)return r('');const im=new Image();im.onload=()=>{try{const s=300,c=document.createElement('canvas');c.width=c.height=s;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,s,s);r(c.toDataURL('image/jpeg',.8))}catch(e){r('')}};im.onerror=()=>r('');im.src=u});
-function sitePost(o){const c=encCfg();if(!c.sitepw)return;const base=String(c.site||'https://jeiannefm.vercel.app').replace(/\/+$/,'');
-  fetch(base+'/api/nowplaying',{method:'POST',headers:{'Content-Type':'application/json','x-admin-password':c.sitepw},body:JSON.stringify(o)})
-   .then(r=>{if(r.status===401)flash('Website: maling password');else if(!r.ok)flash('Website: hindi na-save ('+r.status+')')}).catch(()=>{})}
 let npWarned=false;
 async function sendTitle(title){
   const C=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.CapacitorHttp;
@@ -1164,19 +1160,17 @@ async function sendTitle(title){
 async function nowSend(force){
   if(!air)return;
   let i=-1;if(nowI>=0&&audios[nowI]&&!audios[nowI].paused)i=nowI;else{const k=[0,1].find(x=>audios[x]&&!audios[x].paused);if(k!=null)i=k}
-  if(i<0){if(force){nowLast='';nowLastT='';sitePost({clear:true})}return}
+  if(i<0){if(force){nowLast='';nowLastT=''}return}
   const s=nowText(i);if(!s)return;
   const key=s+'|'+(covers[i]?1:0);if(!force&&key===nowLast)return;nowLast=key;
   const c=encCfg(),N=natP();
-  if(s!==nowLastT){nowLastT=s;sendTitle(s)}
-  if(c.sitepw){let cv='';const cu=covers[i];if(cu){cv=coverCache.get(cu);if(cv===undefined){cv=await coverSmall(cu);coverCache.set(cu,cv)}}
-    sitePost({title:s,artist:(metas[i]&&metas[i].a)||'',cover:cv||''})}}
+  if(s!==nowLastT){nowLastT=s;sendTitle(s)}}
 window.nowPlay=i=>{nowI=i;nowSend()};
 window.nowSync=i=>{if(i===nowI||(air&&audios[i]&&!audios[i].paused))nowSend()};
 const encCfg=()=>{try{return JSON.parse(localStorage.getItem('dj_enc')||'{}')}catch(e){return {}}};
 const encOK=c=>!!(c.host&&c.port&&c.pass&&(c.type==='shoutcast'||c.mount));
 function airOff(msg){const a=air;air=null;onAir=false;if(a){try{master.disconnect(a.sp)}catch(e){}try{a.sp.disconnect();a.mute.disconnect()}catch(e){}a.sp.onaudioprocess=null;if(a.nat){try{a.nat.close()}catch(e){}}else{try{a.ctrl.close()}catch(e){}}}
-  nowLast='';nowLastT='';sitePost({clear:true});airB.textContent='GO LIVE';airB.classList.remove('onair');flash(msg||'LIVE stopped')}
+  nowLast='';nowLastT='';airB.textContent='GO LIVE';airB.classList.remove('onair');flash(msg||'LIVE stopped')}
 const natP=()=>{const C=window.Capacitor;return(C&&C.Plugins&&C.Plugins.TcpSource)||null};let natL=false;
 const b64=u=>{let t='';for(let i=0;i<u.length;i+=8192)t+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(t)};
 function mkSp(c,push){const enc=new lamejs.Mp3Encoder(2,ctx.sampleRate,+c.kbps||128),sp=ctx.createScriptProcessor(4096,2,2),mute=ctx.createGain();mute.gain.value=0;
