@@ -880,9 +880,9 @@ const msSave=()=>{try{localStorage.setItem('dj_mic_v1',JSON.stringify(MS))}catch
 let micOn=false,micStream=null,mN=null,micDevs=[],duckCur=1,gateHold=0,micTm=null,micOnB=null,micBack=null,micRoot=null,micFill=null,micThr=null;
 const micSet={};
 const MICSVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>';
-const micBtn=btn('MIC',-170,135,58,46,()=>{micTm=setTimeout(()=>{micTm=null;openMic()},450)});
+const micBtn=btn('MIC',-50,508,100,40,()=>{micTm=setTimeout(()=>{micTm=null;openMic()},450)});
 ['pointerup','pointercancel'].forEach(ev=>micBtn.addEventListener(ev,()=>{if(micTm){clearTimeout(micTm);micTm=null;if(ev==='pointerup')toggleMic()}}));
-micBtn.innerHTML=MICSVG;micBtn.style.padding='0';
+micBtn.innerHTML=MICSVG.replace('width="24" height="24"','width="20" height="20"')+'<span style="font-size:13px;margin-left:6px">MIC</span>';micBtn.style.padding='0';
 const mkIR=s=>{const n=Math.floor(ctx.sampleRate*s),b=ctx.createBuffer(2,n,ctx.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.6)}return b};
 function micApply(){if(!mN||!ctx)return;const t=ctx.currentTime;
   mN.hpf.frequency.setTargetAtTime(60+MS.lc*340,t,.02);mN.lp.frequency.setTargetAtTime(3000+MS.hc*13000,t,.02);
@@ -1277,8 +1277,8 @@ const css=document.createElement('style');css.textContent='.onair{background:#d4
 let lp=null;const loadLame=()=>window.lamejs?Promise.resolve(true):(lp=lp||new Promise(r=>{const tryS=(src,fail)=>{const x=document.createElement('script');x.src=src;x.onload=()=>r(!!window.lamejs);x.onerror=fail;document.head.appendChild(x)};tryS('lame.min.js',()=>tryS('https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',()=>{lp=null;r(false)}));setTimeout(()=>r(!!window.lamejs),8000)}));
 loadLame();
 let rec=null,onAir=false;
-const recB=btn('● REC',-50,508,100,40,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
-recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';
+const recB=btn('● REC',-18,135,36,46,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
+recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';recB.style.fontSize='10px';recB.style.lineHeight='1.1';
 let air=null;
 // ---- NOW PLAYING -> server metadata (title na lalabas sa website) ----
 let nowI=-1,nowLast='',nowLastT='';
