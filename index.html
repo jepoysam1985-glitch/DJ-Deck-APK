@@ -1118,13 +1118,6 @@ card.innerHTML=`<div class="stcard"><div class="str"><div><h3>Latency</h3><p>LOW
 <div style="grid-column:1/-1"><label>Video codec</label><select id="so_codec"><option>H.264</option><option>H.265 (HEVC)</option></select></div></div>
 <p id="stSoI" style="margin-top:12px;color:#00e5ff"></p>
 <div class="stdel stsv" id="stSoS">SAVE ENCODER</div><div class="stdel" id="stSoR" style="margin-left:12px">RESET PRESET</div></div>
-<div class="stcard micc" id="stMic"><h3>Mic</h3><p>I-connect ang mic ng phone sa mix. Gumamit ng earphones para walang feedback (alingawngaw).</p>
-<div class="microw"><div class="stsw" id="stMicSw"><i></i></div></div>
-<div class="microw"><label>Mic volume</label><input type="range" id="stMicV" min="0" max="200" step="1" value="100"><span id="stMicVv" class="mqv" style="min-width:48px">100%</span></div>
-<div class="stlb" style="margin-top:18px">12-BAND MIC EQ (-12 to +12 dB)</div>
-<div class="mqw" id="stMicEQ"></div>
-<div class="stdel" id="stMicR" style="margin-top:14px">RESET EQ</div>
-<div class="stn" id="stMicN"></div></div>
 <div class="stcard"><div class="stlb">STORAGE</div><h3>BPM &amp; cover cache</h3><p>Naka-save na BPM scan at cover art para mabilis mag-load ulit. Safe i-clear — hindi nabubura ang mga kanta, playlist at settings.</p><p id="stCI" style="margin-top:6px;color:#00e5ff"></p><div class="stdel" id="stDel">CLEAR CACHE</div></div>
 <div class="stdone" id="stDone">✕ CLOSE SETTINGS</div>`;
 let lat='low';try{lat=localStorage.getItem('dj_latency')||'low'}catch(e){}
@@ -1135,44 +1128,6 @@ function setLat(v){if(v===lat)return;lat=v;try{localStorage.setItem('dj_latency'
   if(ctx){n.innerHTML='Mag-a-apply sa susunod na bukas ng app. &nbsp;<span id="stRs" style="text-decoration:underline">I-RESTART NGAYON</span>';q('stRs').onclick=()=>location.reload()}
   else n.textContent='Na-apply na: gagamitin sa susunod na kantang i-load.'}
 q('stS').onclick=()=>setLat('stable');q('stL').onclick=()=>setLat('low');
-const mcss=document.createElement('style');mcss.textContent='.micc{display:flex;flex-direction:column;align-items:center;text-align:center}.micc>p{max-width:640px}.microw{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:16px;width:100%}.microw label{font:700 18px system-ui;color:#8fd3dd}.microw input[type=range]{width:min(60%,420px)}.mqw{display:flex;justify-content:center;gap:clamp(4px,1.2vw,14px);width:100%;margin-top:14px}.mqb{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;max-width:72px}.stc .mqs{position:relative;width:100%;height:170px;touch-action:none!important;cursor:pointer}.mqs:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:6px;margin-left:-3px;border-radius:3px;background:#082f38;border:1px solid #12a4b8}.mqs i{position:absolute;left:10%;right:10%;top:50%;height:1px;background:#12a4b8}.mqs b{position:absolute;left:50%;width:34px;height:20px;margin:-10px 0 0 -17px;border-radius:8px;background:#00e5ff;box-shadow:0 0 8px rgba(0,229,255,.6)}.mqf{font:700 13px system-ui;color:#fff}.mqv{font:12px system-ui;color:#00e5ff;min-height:14px}';document.head.appendChild(mcss);
-// ===== MIC (center) + 12-band EQ =====
-const MICB=[40,80,160,315,630,1250,2500,5000,8000,10000,12500,16000];
-const mic={on:false,stream:null,src:null,eq:[],trim:null,gain:1,vals:MICB.map(()=>0)};
-try{const sv=JSON.parse(localStorage.getItem('dj_mic')||'null');if(sv){if(Array.isArray(sv.eq)&&sv.eq.length===12)mic.vals=sv.eq.map(Number);if(sv.gain>=0&&sv.gain<=2)mic.gain=+sv.gain}}catch(e){}
-function micSave(){try{localStorage.setItem('dj_mic',JSON.stringify({eq:mic.vals,gain:mic.gain}))}catch(e){}}
-function micApply(){mic.eq.forEach((f,i)=>{f.gain.value=mic.vals[i]});if(mic.trim)mic.trim.gain.value=mic.gain}
-async function micOn(){const n=q('stMicN');n.textContent='';
-  try{
-    if(!ctx&&typeof ensureCtx==='function')ensureCtx(0);
-    if(!ctx||!mixBus){n.textContent='Hindi pa handa ang audio engine. I-play muna ang kahit anong kanta, tapos subukan ulit.';return}
-    if(ctx.state==='suspended')ctx.resume();
-    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){n.textContent='Hindi supported ang mic sa device na ito.';return}
-    const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
-    mic.stream=st;mic.src=ctx.createMediaStreamSource(st);
-    mic.eq=MICB.map((f,k)=>{const b=ctx.createBiquadFilter();b.type=k===0?'lowshelf':k===11?'highshelf':'peaking';b.frequency.value=f;b.Q.value=1.4;return b});
-    mic.trim=ctx.createGain();
-    let nd=mic.src;mic.eq.forEach(x=>{nd.connect(x);nd=x});nd.connect(mic.trim);mic.trim.connect(mixBus);
-    mic.on=true;micApply();n.textContent='Mic ON. Gumamit ng earphones para walang feedback.';
-  }catch(e){mic.on=false;n.textContent='Hindi ma-on ang mic: '+(e&&e.name==='NotAllowedError'?'i-allow ang Microphone permission sa phone settings.':((e&&e.message)||e))}}
-function micOff(){try{mic.src&&mic.src.disconnect();mic.eq.forEach(x=>x.disconnect());mic.trim&&mic.trim.disconnect()}catch(e){}
-  try{mic.stream&&mic.stream.getTracks().forEach(t=>t.stop())}catch(e){}
-  mic.src=null;mic.stream=null;mic.eq=[];mic.trim=null;mic.on=false;q('stMicN').textContent='Mic OFF.'}
-const micSw=q('stMicSw');micSw.onclick=async()=>{if(mic.on)micOff();else await micOn();micSw.classList.toggle('on',mic.on)};
-const micV=q('stMicV'),micVv=q('stMicVv');micV.value=Math.round(mic.gain*100);micVv.textContent=micV.value+'%';
-micV.oninput=()=>{mic.gain=micV.value/100;micVv.textContent=micV.value+'%';micApply()};micV.onchange=micSave;
-const mqw=q('stMicEQ'),mqPaint=[];
-MICB.forEach((f,i)=>{const d=document.createElement('div');d.className='mqb';
-  d.innerHTML='<div class="mqv"></div><div class="mqs"><i></i><b></b></div><div class="mqf">'+(f>=1000?(f/1000)+'k':f)+'</div>';mqw.appendChild(d);
-  const s=d.querySelector('.mqs'),th=d.querySelector('b'),vv=d.querySelector('.mqv');let drag=false;
-  const paintB=()=>{const v=mic.vals[i];th.style.top=((12-v)/24*100)+'%';vv.textContent=(v>0?'+':'')+(Math.round(v*10)/10)};mqPaint.push(paintB);
-  const setY=y=>{const r=s.getBoundingClientRect();let v=12-((y-r.top)/r.height)*24;v=Math.max(-12,Math.min(12,Math.round(v*2)/2));mic.vals[i]=v;paintB();micApply()};
-  s.addEventListener('pointerdown',e=>{drag=true;try{s.setPointerCapture(e.pointerId)}catch(x){}setY(e.clientY);e.preventDefault()});
-  s.addEventListener('pointermove',e=>{if(drag)setY(e.clientY)});
-  const end=()=>{if(drag){drag=false;micSave()}};s.addEventListener('pointerup',end);s.addEventListener('pointercancel',end);
-  s.addEventListener('dblclick',()=>{mic.vals[i]=0;paintB();micApply();micSave()});paintB()});
-q('stMicR').onclick=()=>{mic.vals=MICB.map(()=>0);mqPaint.forEach(p=>p());micApply();micSave()};
-
 function info(){const bi=q('stBI');if(bi)bi.textContent=bufV==='auto'?'Buffer: AUTO (sumusunod sa Latency)':'Buffer: '+bufV+' samples ≈ '+(bufV/48000*1000).toFixed(1)+' ms';const el=q('stInfo');
   if(!ctx){el.textContent='Ngayon: '+(lat==='low'?'LOW':'STABLE')+' · hindi pa nagsisimula ang audio';return}
   const ms=Math.round(((ctx.baseLatency||0)+(ctx.outputLatency||0))*1000),st=ctx.playbackStats&&ctx.playbackStats.underrunEvents;
@@ -1218,14 +1173,73 @@ const gb=btn('',-50,458,100,42,()=>{});gb.style.flexDirection='column';gb.style.
 gb.innerHTML=gear+'<span style="font-size:11px;letter-spacing:.5px">SETTINGS</span>';gb.addEventListener('click',()=>{if(performance.now()-window.__stClosed<500)return;open()});
 })();
 
+// ===== MIC button (sa ilalim ng SETTINGS) + MIC panel: naka-center, may 12-band EQ =====
+(function(){
+const css=document.createElement('style');css.textContent='.micp .stc{display:flex;flex-direction:column;align-items:center}.micp .stc>.micc{width:100%;margin:auto;text-align:center;display:flex;flex-direction:column;align-items:center}.micc>p{max-width:640px;margin:0}.microw{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:18px 28px;margin-top:14px;width:100%}.microw label{font:700 18px system-ui;color:#8fd3dd}.microw input[type=range]{width:min(52vw,360px)}.micsw{display:flex;align-items:center;gap:12px;font:800 20px system-ui;color:#fff}.mqw{display:flex;justify-content:center;gap:clamp(4px,1.2vw,14px);width:100%;margin-top:12px}.mqb{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:72px}.stc .mqs{position:relative;width:100%;height:150px;touch-action:none!important;cursor:pointer}.mqs:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:6px;margin-left:-3px;border-radius:3px;background:#082f38;border:1px solid #12a4b8}.mqs i{position:absolute;left:10%;right:10%;top:50%;height:1px;background:#12a4b8}.mqs b{position:absolute;left:50%;width:34px;height:20px;margin:-10px 0 0 -17px;border-radius:8px;background:#00e5ff;box-shadow:0 0 8px rgba(0,229,255,.6)}.mqf{font:700 13px system-ui;color:#fff}.mqv{font:12px system-ui;color:#00e5ff;min-height:14px}';document.head.appendChild(css);
+const bk=document.createElement('div');bk.className='stb micp';stage.appendChild(bk);
+const card=document.createElement('div');card.className='stc';bk.appendChild(card);
+const hd=document.createElement('div');hd.className='sth2';hd.innerHTML='<b>MIC</b><div class="stx" id="micClose">&#10005; CLOSE</div>';bk.insertBefore(hd,card);
+card.innerHTML='<div class="stcard micc"><p>I-connect ang mic ng phone sa mix. Gumamit ng earphones para walang feedback (alingawngaw).</p>'
+ +'<div class="microw"><div class="micsw"><div class="stsw" id="micSw"><i></i></div><span id="micSt">OFF</span></div>'
+ +'<div class="micsw"><label>Volume</label><input type="range" id="micV" min="0" max="200" step="1" value="100"><span id="micVv" class="mqv" style="min-width:48px;font-size:16px">100%</span></div></div>'
+ +'<div class="stlb" style="margin-top:16px">12-BAND MIC EQ (-12 to +12 dB)</div>'
+ +'<div class="mqw" id="micEQ"></div>'
+ +'<div class="stdel" id="micR" style="margin-top:12px">RESET EQ</div>'
+ +'<div class="stn" id="micN"></div></div>';
+const q=i=>card.querySelector('#'+i);
+const MICB=[40,80,160,315,630,1250,2500,5000,8000,10000,12500,16000];
+const mic={on:false,stream:null,src:null,eq:[],trim:null,gain:1,vals:MICB.map(()=>0)};
+try{const sv=JSON.parse(localStorage.getItem('dj_mic')||'null');if(sv){if(Array.isArray(sv.eq)&&sv.eq.length===12)mic.vals=sv.eq.map(Number);if(sv.gain>=0&&sv.gain<=2)mic.gain=+sv.gain}}catch(e){}
+function micSave(){try{localStorage.setItem('dj_mic',JSON.stringify({eq:mic.vals,gain:mic.gain}))}catch(e){}}
+function micApply(){mic.eq.forEach((f,i)=>{f.gain.value=mic.vals[i]});if(mic.trim)mic.trim.gain.value=mic.gain}
+const mb=btn('',-50,508,100,42,()=>{});mb.style.gap='6px';
+mb.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4"/><path d="M8 22h8"/></svg><span style="font-size:15px;letter-spacing:.5px">MIC</span>';
+const micSw=q('micSw');
+function paintSw(){micSw.classList.toggle('on',mic.on);q('micSt').textContent=mic.on?'ON':'OFF';mb.classList.toggle('on',mic.on)}
+async function micOn(){const n=q('micN');n.textContent='';
+  try{
+    if(!ctx&&typeof ensureCtx==='function')ensureCtx(0);
+    if(!ctx||!mixBus){n.textContent='Hindi pa handa ang audio engine. I-play muna ang kahit anong kanta, tapos subukan ulit.';return}
+    if(ctx.state==='suspended')ctx.resume();
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){n.textContent='Hindi supported ang mic sa device na ito.';return}
+    const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
+    mic.stream=st;mic.src=ctx.createMediaStreamSource(st);
+    mic.eq=MICB.map((f,k)=>{const b=ctx.createBiquadFilter();b.type=k===0?'lowshelf':k===11?'highshelf':'peaking';b.frequency.value=f;b.Q.value=1.4;return b});
+    mic.trim=ctx.createGain();
+    let nd=mic.src;mic.eq.forEach(x=>{nd.connect(x);nd=x});nd.connect(mic.trim);mic.trim.connect(mixBus);
+    mic.on=true;micApply();n.textContent='Mic ON. Gumamit ng earphones para walang feedback.';
+  }catch(e){mic.on=false;n.textContent='Hindi ma-on ang mic: '+(e&&e.name==='NotAllowedError'?'i-allow ang Microphone permission sa phone settings.':((e&&e.message)||e))}}
+function micOff(){try{mic.src&&mic.src.disconnect();mic.eq.forEach(x=>x.disconnect());mic.trim&&mic.trim.disconnect()}catch(e){}
+  try{mic.stream&&mic.stream.getTracks().forEach(t=>t.stop())}catch(e){}
+  mic.src=null;mic.stream=null;mic.eq=[];mic.trim=null;mic.on=false;q('micN').textContent='Mic OFF.'}
+micSw.onclick=async()=>{if(mic.on)micOff();else await micOn();paintSw()};
+const micV=q('micV'),micVv=q('micVv');micV.value=Math.round(mic.gain*100);micVv.textContent=micV.value+'%';
+micV.oninput=()=>{mic.gain=micV.value/100;micVv.textContent=micV.value+'%';micApply()};micV.onchange=micSave;
+const mqw=q('micEQ'),mqPaint=[];
+MICB.forEach((f,i)=>{const d=document.createElement('div');d.className='mqb';
+  d.innerHTML='<div class="mqv"></div><div class="mqs"><i></i><b></b></div><div class="mqf">'+(f>=1000?(f/1000)+'k':f)+'</div>';mqw.appendChild(d);
+  const s=d.querySelector('.mqs'),th=d.querySelector('b'),vv=d.querySelector('.mqv');let drag=false;
+  const paintB=()=>{const v=mic.vals[i];th.style.top=((12-v)/24*100)+'%';vv.textContent=(v>0?'+':'')+(Math.round(v*10)/10)};mqPaint.push(paintB);
+  const setY=y=>{const r=s.getBoundingClientRect();let v=12-((y-r.top)/r.height)*24;v=Math.max(-12,Math.min(12,Math.round(v*2)/2));mic.vals[i]=v;paintB();micApply()};
+  s.addEventListener('pointerdown',e=>{drag=true;try{s.setPointerCapture(e.pointerId)}catch(x){}setY(e.clientY);e.preventDefault()});
+  s.addEventListener('pointermove',e=>{if(drag)setY(e.clientY)});
+  const end=()=>{if(drag){drag=false;micSave()}};s.addEventListener('pointerup',end);s.addEventListener('pointercancel',end);
+  s.addEventListener('dblclick',()=>{mic.vals[i]=0;paintB();micApply();micSave()});paintB()});
+q('micR').onclick=()=>{mic.vals=MICB.map(()=>0);mqPaint.forEach(p=>p());micApply();micSave()};
+window.__micClosed=0;
+const shut=e=>{if(e&&e.preventDefault)e.preventDefault();bk.style.display='none';window.__micClosed=performance.now()};
+hd.querySelector('#micClose').addEventListener('pointerdown',shut);hd.querySelector('#micClose').addEventListener('click',shut);
+mb.addEventListener('click',()=>{if(performance.now()-window.__micClosed<500)return;paintSw();bk.style.display='flex'});
+})();
+
 // ===== REC (MP3) + GO LIVE =====
 (function(){
 const css=document.createElement('style');css.textContent='.onair{background:#d4001a!important;color:#fff!important;animation:oa 1s infinite}@keyframes oa{50%{box-shadow:0 0 18px 4px #ff2a3a}}';document.head.appendChild(css);
 let lp=null;const loadLame=()=>window.lamejs?Promise.resolve(true):(lp=lp||new Promise(r=>{const x=document.createElement('script');x.src='https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';x.onload=()=>r(!!window.lamejs);x.onerror=()=>{lp=null;r(false)};document.head.appendChild(x);setTimeout(()=>r(!!window.lamejs),8000)}));
 loadLame();
 let rec=null,onAir=false;
-const recB=btn('● REC',-50,508,100,40,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
-recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';
+const recB=btn('●\nREC',-20,136,40,44,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
+recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';recB.style.fontSize='11px';recB.style.lineHeight='1.1';recB.style.whiteSpace='pre-line';
 let air=null;
 // ---- NOW PLAYING -> server metadata (title na lalabas sa website) ----
 let nowI=-1,nowLast='',nowLastT='';
@@ -1318,10 +1332,10 @@ async function toggleRec(){
 async function stopRec(){
   const r=rec;rec=null;try{master.disconnect(r.sp)}catch(e){}try{r.sp.disconnect();r.mute.disconnect()}catch(e){}r.sp.onaudioprocess=null;
   let blob,ext;if(r.enc){const b=r.enc.flush();if(b.length)r.parts.push(b);blob=new Blob(r.parts,{type:'audio/mpeg'});ext='mp3'}else{blob=wav(r.parts,r.sr);ext='wav'}
-  recB.classList.remove('on');recB.textContent='● REC';const d=new Date(),z=x=>String(x).padStart(2,'0');
+  recB.classList.remove('on');recB.textContent='●\nREC';const d=new Date(),z=x=>String(x).padStart(2,'0');
   const name='DJ-REC-'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'-'+z(d.getHours())+z(d.getMinutes())+z(d.getSeconds())+'.'+ext;
   flash('REC tapos — '+(blob.size/1048576).toFixed(1)+' MB · '+name);await save(blob,name)}
-setInterval(()=>{if(!rec)return;const t=Math.floor((performance.now()-rec.t0)/1000);recB.textContent='● '+String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')},500);
+setInterval(()=>{if(!rec)return;const t=Math.floor((performance.now()-rec.t0)/1000);recB.textContent='●\n'+String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')},500);
 window.__recTest={start:()=>toggleRec(),stop:()=>toggleRec()};
 })();
 
