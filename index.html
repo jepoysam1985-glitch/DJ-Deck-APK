@@ -879,6 +879,32 @@ try{Object.assign(MS,JSON.parse(localStorage.getItem('dj_mic_v1')||'{}'))}catch(
 const msSave=()=>{try{localStorage.setItem('dj_mic_v1',JSON.stringify(MS))}catch(e){}};
 let micOn=false,micStream=null,mN=null,micDevs=[],duckCur=1,gateHold=0,micTm=null,micOnB=null,micBack=null,micRoot=null,micFill=null,micThr=null;
 const micSet={};
+let micOnB2=null,micEqBack=null;
+const MEQK='dj_mic_eq';let MEQ=new Array(12).fill(0);
+try{const a=JSON.parse(localStorage.getItem(MEQK)||'null');if(Array.isArray(a)&&a.length===12)MEQ=a.map(v=>Math.max(-12,Math.min(12,+v||0)))}catch(e){}
+function initMicEq(){
+  micEqBack=document.createElement('div');micEqBack.className='eqback';stage.appendChild(micEqBack);
+  const root=document.createElement('div');root.className='mid';micEqBack.appendChild(root);
+  const t=document.createElement('div');t.className='eqt';t.textContent='MIC EQ 12 BAND';root.appendChild(t);
+  const cont=document.createElement('div');cont.className='mid';root.appendChild(cont);
+  const sets=[];
+  micOnB2=btn('MIC ON / OFF',-178,20,140,46,()=>toggleMic(),root);micOnB2.classList.toggle('on',micOn);
+  btn('RESET',-30,20,100,46,()=>sets.forEach(s=>s(.5)),root);
+  btn('BACK',78,20,100,46,()=>{micEqBack.style.display='none'},root);
+  const PREM=[['FLAT',[0,0,0,0,0,0,0,0,0,0,0,0]],['VOICE',[-8,-6,-3,0,1,2,3,3,1,0,-1,-2]],['SINGER',[-6,-4,-1,1,2,2,3,4,3,2,1,0]],
+    ['RADIO',[-10,-8,-4,0,2,3,4,4,2,0,-2,-4]],['WARM',[3,3,2,1,0,0,-1,-2,-3,-4,-5,-6]],['BRIGHT',[-6,-4,-2,0,0,1,2,4,6,6,5,4]]];
+  const pb=PREM.map(p=>btn(p[0],0,638,100,58,()=>p[1].forEach((db,k)=>sets[k](db/24+.5)),root));
+  const Wp=Math.max(600,W-48),sx=Wp/12,L0=-Wp/2,SY=126,SL=410;
+  t.style.left=L0+'px';
+  const z=document.createElement('div');z.className='eqz';z.style.left=L0+'px';z.style.width=Wp+'px';z.style.top=(SY+SL/2)+'px';cont.appendChild(z);
+  BANDS.forEach((f,k)=>{const x=(k-5.5)*sx;
+    const v=document.createElement('div');v.className='eqv';v.style.left=x+'px';v.textContent='0';cont.appendChild(v);
+    const fl=document.createElement('div');fl.className='lab';fl.style.cssText='left:'+x+'px;top:'+(SY+SL+14)+'px;font-size:15px';fl.textContent=BLBL[k];cont.appendChild(fl);
+    sets[k]=slider(x,SY,SL,true,MEQ[k]/24+.5,val=>{const db=(val-.5)*24;MEQ[k]=db;v.textContent=fmtDb(db);micApply();
+      try{localStorage.setItem(MEQK,JSON.stringify(MEQ.map(q=>Math.round(q*10)/10)))}catch(e){}},cont);
+    v.addEventListener('pointerdown',()=>sets[k](.5))});
+  const pw=(Wp-5*8)/6;pb.forEach((b,n)=>{b.style.left=(L0+n*(pw+8))+'px';b.style.width=pw+'px'});
+}
 const MICSVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>';
 const micBtn=btn('MIC',-50,508,100,40,()=>{micTm=setTimeout(()=>{micTm=null;openMic()},450)});
 ['pointerup','pointercancel'].forEach(ev=>micBtn.addEventListener(ev,()=>{if(micTm){clearTimeout(micTm);micTm=null;if(ev==='pointerup')toggleMic()}}));
@@ -888,17 +914,18 @@ function micApply(){if(!mN||!ctx)return;const t=ctx.currentTime;
   mN.hpf.frequency.setTargetAtTime(60+MS.lc*340,t,.02);mN.lp.frequency.setTargetAtTime(3000+MS.hc*13000,t,.02);
   mN.pres.gain.setTargetAtTime(-6+MS.pres*15,t,.02);
   mN.comp.threshold.setTargetAtTime(-8-MS.comp*32,t,.02);mN.comp.ratio.setTargetAtTime(1+MS.comp*11,t,.02);
-  mN.lvl.gain.setTargetAtTime(MS.lvl*2.5,t,.02);mN.rs.gain.setTargetAtTime(MS.rev*.9,t,.02)}
+  mN.lvl.gain.setTargetAtTime(MS.lvl*2.5,t,.02);mN.rs.gain.setTargetAtTime(MS.rev*.9,t,.02);if(mN.eq)mN.eq.forEach((b,k)=>b.gain.setTargetAtTime(MEQ[k],t,.02))}
 function micBuild(stream){
   const src=ctx.createMediaStreamSource(stream),hpf=ctx.createBiquadFilter(),an=ctx.createAnalyser(),lp=ctx.createBiquadFilter(),pres=ctx.createBiquadFilter(),
     gate=ctx.createGain(),comp=ctx.createDynamicsCompressor(),lvl=ctx.createGain(),rs=ctx.createGain(),conv=ctx.createConvolver();
+  const eq=BANDS.map((f,k)=>{const b=ctx.createBiquadFilter();b.type=k===0?'lowshelf':k===11?'highshelf':'peaking';b.frequency.value=f;b.Q.value=BQ[k];b.gain.value=MEQ[k];return b});
   hpf.type='highpass';hpf.Q.value=.7;lp.type='lowpass';lp.Q.value=.7;pres.type='peaking';pres.frequency.value=3200;pres.Q.value=.9;
   an.fftSize=1024;comp.knee.value=18;comp.attack.value=.004;comp.release.value=.25;conv.buffer=mkIR(1.6);
-  src.connect(hpf);hpf.connect(an);hpf.connect(lp);lp.connect(pres);pres.connect(gate);gate.connect(comp);comp.connect(lvl);
+  src.connect(hpf);hpf.connect(an);hpf.connect(lp);lp.connect(pres);let pn=pres;eq.forEach(b=>{pn.connect(b);pn=b});pn.connect(gate);gate.connect(comp);comp.connect(lvl);
   lvl.connect(mixBus);lvl.connect(rs);rs.connect(conv);conv.connect(mixBus);
-  mN={src,hpf,an,lp,pres,gate,comp,lvl,rs,conv,buf:new Uint8Array(1024)};micApply()}
+  mN={src,hpf,an,lp,pres,gate,comp,lvl,rs,conv,buf:new Uint8Array(1024)};eq.forEach((b,k)=>{mN['e'+k]=b});mN.eq=eq;micApply()}
 function micOff(){if(mN){Object.values(mN).forEach(n=>{try{n.disconnect&&n.disconnect()}catch(e){}})}mN=null;
-  if(micStream)micStream.getTracks().forEach(t=>t.stop());micStream=null;micOn=false;micBtn.classList.remove('on');if(micOnB)micOnB.classList.remove('on')}
+  if(micStream)micStream.getTracks().forEach(t=>t.stop());micStream=null;micOn=false;micBtn.classList.remove('on');if(micOnB)micOnB.classList.remove('on');if(micOnB2)micOnB2.classList.remove('on')}
 async function micStart(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){flash('MIC: hindi supported sa device');return false}
   try{
@@ -908,7 +935,7 @@ async function micStart(){
     try{micStream=await navigator.mediaDevices.getUserMedia({audio:a})}
     catch(e){if(MS.dev&&e&&e.name==='OverconstrainedError'){MS.dev='';delete a.deviceId;micStream=await navigator.mediaDevices.getUserMedia({audio:a})}else throw e}
     if(ctx.state==='suspended')ctx.resume();
-    micBuild(micStream);micOn=true;micBtn.classList.add('on');if(micOnB)micOnB.classList.add('on');return true
+    micBuild(micStream);micOn=true;micBtn.classList.add('on');if(micOnB)micOnB.classList.add('on');if(micOnB2)micOnB2.classList.add('on');return true
   }catch(err){micOff();flash('MIC: '+(err&&err.name==='NotAllowedError'?'hindi pinayagan ang mic permission':'hindi ma-open ang mic'));return false}}
 async function toggleMic(){if(micOn){micOff();flash('MIC OFF');return}
   if(await micStart())flash('MIC ON · hawak ang MIC button = settings · gumamit ng headphones',5000)}
@@ -917,12 +944,12 @@ function openMic(){if(cueOpen)closeCue();micBack.style.display='block'}
 function closeMic(){micBack.style.display='none'}
 function initMic(){
   micBack=document.createElement('div');micBack.className='eqback';stage.appendChild(micBack);
-  micRoot=document.createElement('div');micRoot.className='mid';micBack.appendChild(micRoot);
+  micRoot=document.createElement('div');micRoot.className='mid';micRoot.style.top='46px';micBack.appendChild(micRoot);
   const T=(txt,l,t,cls)=>{const e=document.createElement('div');e.className=cls||'cl';e.textContent=txt;e.style.left=l+'px';e.style.top=t+'px';micRoot.appendChild(e);return e};
   T('MIC SETTINGS',-374,30,'eqt');
   micOnB=btn('MIC ON / OFF',-110,20,140,46,()=>toggleMic(),micRoot);micOnB.classList.toggle('on',micOn);
   btn('RESET',50,20,100,46,()=>{MS=Object.assign({},MS0,{dev:MS.dev});sync(true)},micRoot);
-  btn('CLOSE',274,20,100,46,closeMic,micRoot);
+  btn('CLOSE',274,20,100,46,closeMic,micRoot);btn('EQ 12-BAND',158,20,108,46,()=>{micEqBack.style.display='block'},micRoot);
   const PR={
     VOICE:{aec:1,ns:1,agc:0,gate:1,lvl:.4,gth:.3,lc:.3,hc:.75,pres:.55,comp:.5,rev:0,duck:.35},
     SINGER:{aec:1,ns:0,agc:0,gate:0,lvl:.38,gth:.15,lc:.15,hc:.9,pres:.45,comp:.35,rev:.25,duck:.2},
@@ -948,7 +975,7 @@ function initMic(){
     ['lc','LOW CUT',v=>Math.round(60+v*340)+' Hz'],['hc','HIGH CUT',v=>((3000+v*13000)/1000).toFixed(1)+' kHz'],
     ['pres','PRESENCE (EQ)',v=>(-6+v*15).toFixed(1)+' dB'],['comp','COMPRESSOR',v=>Math.round(v*100)+'%'],
     ['rev','REVERB / ECHO FX',v=>Math.round(v*100)+'%'],['duck','DUCK MUSIC',v=>Math.round(v*100)+'%']];
-  SD.forEach((d,n)=>{const x=n<4?-350:40,y=280+(n%4)*76,L=T('',x-24,y-38);
+  SD.forEach((d,n)=>{const x=n<4?-340:40,y=280+(n%4)*76,L=T('',x-24,y-38);
     micSet[d[0]]=slider(x,y,300,false,MS[d[0]],v=>{MS[d[0]]=v;L.textContent=d[1]+':  '+d[2](v);micApply();msSave()},micRoot)});
   T('Kung may echo: ON ang ECHO CANCEL at NOISE GATE, ibaba ang MIC LEVEL, o gumamit ng headphones.',-374,566);
   function sync(fromPreset){
@@ -969,7 +996,7 @@ setInterval(()=>{
   if(nd!==duckCur){duckCur=nd;window.__duck=duckCur;try{applyGain()}catch(e){}}
   if(micBack&&micBack.style.display==='block'&&micFill){micFill.style.width=(Math.min(1,rms*3.5)*100)+'%';micFill.style.background=open?'#22d13a':'#556';micThr.style.left=(Math.min(1,thr*3.5)*100)+'%'}
 },30);
-initMic();
+initMic();initMicEq();
 setInterval(()=>{for(let d=0;d<2;d++){const l=loop[d],a=audios[d];
   if(l.on&&l.in!=null&&l.out!=null&&a&&!a.paused&&cur(d)>=l.out)a.currentTime=l.in}},10);
 
