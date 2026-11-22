@@ -79,7 +79,7 @@ public class RtmpService extends Service implements ConnectChecker {
 
     display = new RtmpDisplay(this, true, this);
     display.setIntentResult(rc, data);
-    if (!display.prepareVideo(w, h, fps, vb * 1000, kf, 0, dpi)) {
+    if (!display.prepareVideo(w, h, fps, vb * 1000, 0, dpi)) {
       throw new Exception("hindi ma-prepare ang video encoder");
     }
     boolean au = false;
