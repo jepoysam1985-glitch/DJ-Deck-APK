@@ -1005,7 +1005,7 @@ function initMic(){
   micFill=document.createElement('div');micFill.style.cssText='height:100%;width:0;background:#556';
   micThr=document.createElement('div');micThr.style.cssText='position:absolute;top:0;width:3px;height:100%;background:#ff4d4d';
   mt.append(micFill,micThr);micRoot.appendChild(mt);
-  T('MIC LEVEL  (pulang guhit = gate threshold)',-374,206);
+  T('MIC LEVEL  (red line = gate threshold)',-374,206);
   const SD=[['lvl','MIC LEVEL',v=>Math.round(v*250)+'%'],['gth','GATE THRESHOLD',v=>Math.round(v*100)+'%'],
     ['lc','LOW CUT',v=>Math.round(60+v*340)+' Hz'],['hc','HIGH CUT',v=>((3000+v*13000)/1000).toFixed(1)+' kHz'],
     ['pres','PRESENCE (EQ)',v=>(-6+v*15).toFixed(1)+' dB'],['comp','COMPRESSOR',v=>Math.round(v*100)+'%'],
@@ -1272,7 +1272,7 @@ const css=document.createElement('style');css.textContent=`
 .sth2 b{font:700 30px system-ui,sans-serif;color:#00e5ff;letter-spacing:1px}
 .sth2 .stx{min-width:240px;min-height:76px;display:flex;align-items:center;justify-content:center;padding:0 36px!important;font:800 28px system-ui,sans-serif!important;border-radius:999px;background:#00e5ff!important;color:#00232a!important;box-shadow:0 0 18px rgba(0,229,255,.55)}
 .stdone{display:flex;align-items:center;justify-content:center;min-height:84px;margin-top:22px;border-radius:22px;background:#00e5ff;color:#00232a;font:800 26px system-ui,sans-serif}
-.stdone:active{filter:brightness(1.3)}.stbrand{display:flex;align-items:center;gap:22px}.stbrand img{width:84px;height:84px;border-radius:18px;object-fit:cover;flex:none;border:2px solid #12a4b8}.stbrand .bn{font:800 26px system-ui,sans-serif;color:#00e5ff;letter-spacing:.5px}.stbrand .bc{margin-top:6px;font:600 16px system-ui,sans-serif;color:#8fd3dd;letter-spacing:1.5px}.stb,.stb .stc,.stb .sth{background:#0a0f16!important}.stb .sth2{background:#070b10!important;border-bottom:2px solid var(--ac)!important}.stb .sth2 b,.stb .sth b,.stb .stlb,.stb .stn,.stb .stbrand .bn{color:var(--acl)!important}.stb .stcard{background:#111a25!important;border:2px solid var(--acd)!important}.stb .stcard h3,.stb .str h3{color:#fff}.stb .stcard>p,.stb .str p,.stb .stg label,.stb .stbrand .bc{color:var(--act)!important}.stb p[style*="00e5ff"]{color:var(--acl)!important}.stb .stbrand img{border-color:var(--ac)!important}.stb .stc input,.stb .stc select{background:#0a131c!important;border:2px solid var(--ac)!important;color:#fff}.stb .stt{border-color:var(--ac)!important;background:#0a131c!important}.stb .stt div.on{background:var(--ac)!important;color:#fff!important}.stb .stsw{background:var(--acd)!important}.stb .stsw.on{background:var(--ac)!important}.stb .stx,.stb .sth2 .stx,.stb .stdone,.stb .stsv{background:linear-gradient(180deg,var(--acl),var(--ac))!important;color:#00131f!important;border:0!important;box-shadow:0 0 18px rgba(31,168,255,.55)!important}.stb .stdone:active,.stb .stx:active{filter:brightness(1.2)}`;
+.stdone:active{filter:brightness(1.3)}.stbrand{display:flex;align-items:center;gap:22px}.stbrand img{width:84px;height:84px;border-radius:18px;object-fit:cover;flex:none;border:2px solid #12a4b8}.stbrand .bn{font:800 26px system-ui,sans-serif;color:#00e5ff;letter-spacing:.5px}.stbrand .bc{margin-top:6px;font:600 16px system-ui,sans-serif;color:#8fd3dd;letter-spacing:1.5px}.stb,.stb .stc,.stb .sth{background:#0a0f16!important}.stb .sth2{background:#070b10!important;border-bottom:2px solid var(--ac)!important}.stb .sth2 b,.stb .sth b,.stb .stlb,.stb .stn,.stb .stbrand .bn{color:var(--acl)!important}.stb .stcard{background:#111a25!important;border:2px solid var(--acd)!important}.stb .stcard h3,.stb .str h3{color:#fff}.stb .stcard>p,.stb .str p,.stb .stg label,.stb .stbrand .bc{color:var(--act)!important}.stb p[style*="00e5ff"]{color:var(--acl)!important}.stb .stbrand img{border-color:var(--ac)!important}.stb .stc input,.stb .stc select{background:#0a131c!important;border:2px solid var(--ac)!important;color:#fff}.stb .stt{border-color:var(--ac)!important;background:#0a131c!important}.stb .stt div.on{background:var(--ac)!important;color:#fff!important}.stb .stsw{background:var(--acd)!important}.stb .stsw.on{background:var(--ac)!important}.stb .stx,.stb .sth2 .stx,.stb .stdone,.stb .stsv{background:linear-gradient(180deg,var(--acl),var(--ac))!important;color:#00131f!important;border:0!important;box-shadow:0 0 18px rgba(31,168,255,.55)!important}.stb .stdone:active,.stb .stx:active{filter:brightness(1.2)}.stb .stdone{display:none!important}`;
 document.head.appendChild(css);
 const bk=document.createElement('div');bk.className='stb';stage.appendChild(bk);
 const card=document.createElement('div');card.className='stc';bk.appendChild(card);
@@ -1285,7 +1285,7 @@ card.innerHTML=`<div class="stcard"><div class="str"><div><h3>Latency</h3><p>LOW
 <div class="stt" id="stET" style="margin-top:12px"><div data-v="icecast">ICECAST</div><div data-v="shoutcast">SHOUTCAST</div></div>
 <div class="stg"><div><label>Server / Host</label><input id="en_host" placeholder="link.zeno.fm" autocapitalize="off" autocomplete="off"></div>
 <div><label>Port</label><input id="en_port" type="number" placeholder="8000"></div>
-<div><label id="enMl">Mount (hal. /live)</label><input id="en_mount" placeholder="/mountpoint" autocapitalize="off"></div>
+<div><label id="enMl">Mount (e.g. /live)</label><input id="en_mount" placeholder="/mountpoint" autocapitalize="off"></div>
 <div><label>Username</label><input id="en_user" placeholder="source" autocapitalize="off"></div>
 <div><label>Password</label><input id="en_pass" type="password" placeholder="source password"></div>
 <div><label>Bitrate</label><select id="en_kbps"><option>64</option><option>96</option><option selected>128</option><option>192</option></select></div></div>
@@ -1336,7 +1336,7 @@ qE.onclick=()=>{quantizeOn=!quantizeOn;qE.classList.toggle('on',quantizeOn);try{
 const eK=['host','port','mount','user','pass','kbps'];let eT='icecast';
 const eCfg=()=>{try{return JSON.parse(localStorage.getItem('dj_enc')||'{}')}catch(e){return {}}};
 function eInfo(){const c=eCfg();q('stEI').textContent=(c.host&&c.port&&c.pass&&(c.type==='shoutcast'||c.mount))?'Set: '+c.type.toUpperCase()+' · '+c.host+':'+c.port+(c.type==='icecast'?'/'+String(c.mount).replace(/^\//,''):'')+' — ready to GO LIVE':'NOT SET — GO LIVE will not work'}
-function ePaint(){[...q('stET').children].forEach(d=>d.classList.toggle('on',d.dataset.v===eT));q('enMl').textContent=eT==='icecast'?'Mount (hal. /live)':'Stream ID (hal. 1)';q('en_mount').placeholder=eT==='icecast'?'/live':'1'}
+function ePaint(){[...q('stET').children].forEach(d=>d.classList.toggle('on',d.dataset.v===eT));q('enMl').textContent=eT==='icecast'?'Mount (e.g. /live)':'Stream ID (e.g. 1)';q('en_mount').placeholder=eT==='icecast'?'/live':'1'}
 {const c=eCfg();eT=c.type||'icecast';eK.forEach(k=>{if(c[k]!=null)q('en_'+k).value=c[k]});ePaint();eInfo()}
 q('stET').onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v){eT=v;ePaint()}};
 q('stEs').onclick=()=>{const c={type:eT};eK.forEach(k=>c[k]=q('en_'+k).value.trim());try{localStorage.setItem('dj_enc',JSON.stringify(c))}catch(e){}eInfo();flash('Server saved')};
@@ -1349,7 +1349,7 @@ bE.onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(!v||v===bufV)retu
 paintB();
 let dT=null;const fmtB=b=>b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(0,Math.round(b/1024))+' KB';
 q('stDel').onclick=async()=>{const b=q('stDel'),n=q('stCI');
-  if(!b.classList.contains('go')){b.classList.add('go');b.textContent='TAP ULIT PARA I-CONFIRM';clearTimeout(dT);dT=setTimeout(()=>{b.classList.remove('go');b.textContent='CLEAR CACHE'},3000);return}
+  if(!b.classList.contains('go')){b.classList.add('go');b.textContent='TAP AGAIN TO CONFIRM';clearTimeout(dT);dT=setTimeout(()=>{b.classList.remove('go');b.textContent='CLEAR CACHE'},3000);return}
   clearTimeout(dT);b.classList.remove('go');b.textContent='CLEAR CACHE';
   let before=0,after=0;try{before=(await navigator.storage.estimate()).usage||0}catch(e){}
   try{window.libClearCache&&libClearCache()}catch(e){}
@@ -1388,7 +1388,7 @@ function onBack(){
  if(on(hp)){closeHelp();return}
  if(on(ap)){closeAbout();return}
  const s=document.querySelector('.stb');
- if(s&&getComputedStyle(s).display!=='none'){const d=document.getElementById('stDone');if(d){d.click();return}}
+ if(s&&getComputedStyle(s).display!=='none'){const d=document.getElementById('stClose');if(d){d.click();return}}
  openExit();
 }
 const a=A();
@@ -1847,8 +1847,8 @@ const g=id=>document.getElementById(id);
 if(!g('stSoT'))return;
 const P={
  youtube:{url:'rtmp://a.rtmp.youtube.com/live2',res:'1920x1080',fps:'30',vb:6000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'YouTube: 1080p30 ~ 4500-9000 kbps. Stream key: YouTube Studio > Go Live.'},
- tiktok:{url:'',res:'1280x720',fps:'30',vb:4000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'TikTok: landscape (landscape ang DJ Deck). Ang server URL at stream key ay galing sa TikTok LIVE Studio at nagbabago kada live; i-paste mo mismo.'},
- facebook:{url:'rtmps://live-api-s.facebook.com:443/rtmp/',res:'1280x720',fps:'30',vb:4000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'Facebook: hanggang 1080p30, keyframe 2s. Stream key: Live Producer.'}};
+ tiktok:{url:'',res:'1280x720',fps:'30',vb:4000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'TikTok: landscape (the DJ Deck is landscape). The server URL and stream key come from TikTok LIVE Studio and change every live; paste them yourself.'},
+ facebook:{url:'rtmps://live-api-s.facebook.com:443/rtmp/',res:'1280x720',fps:'30',vb:4000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'Facebook: up to 1080p30, keyframe 2s. Stream key: Live Producer.'}};
 const K='dj_enc_social';let d={},cur='youtube';
 try{d=JSON.parse(localStorage.getItem(K)||'{}');cur=localStorage.getItem(K+'_last')||'youtube'}catch(e){}
 if(!P[cur])cur='youtube';
