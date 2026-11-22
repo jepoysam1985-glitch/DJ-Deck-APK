@@ -8,6 +8,7 @@ on:
       - 'www/**'
       - 'native/**'
       - 'capacitor.config.json'
+      - 'resources/**'
       - 'package.json'
 
 permissions:
@@ -67,6 +68,31 @@ jobs:
           sed -i 's#</application>#    <service android:name="com.djdeck.app.RtmpService" android:exported="false" android:foregroundServiceType="mediaProjection" />\n    </application>#' "$M"
           cat "$M"
 
+      - name: Launcher icon + splash (from resources/icon.png)
+        run: |
+          if [ ! -f resources/icon.png ]; then
+            echo "::warning::resources/icon.png not found - default icon will be used. Upload your logo to resources/icon.png and re-run."
+            exit 0
+          fi
+          IM=$(command -v magick || command -v convert)
+          R=android/app/src/main/res
+          declare -A LG=( [mdpi]=48 [hdpi]=72 [xhdpi]=96 [xxhdpi]=144 [xxxhdpi]=192 )
+          declare -A FG=( [mdpi]=108 [hdpi]=162 [xhdpi]=216 [xxhdpi]=324 [xxxhdpi]=432 )
+          for d in "${!LG[@]}"; do
+            mkdir -p "$R/mipmap-$d"
+            S=${LG[$d]}; FS=${FG[$d]}; IN=$((FS*66/100))
+            $IM resources/icon.png -resize ${S}x${S} "$R/mipmap-$d/ic_launcher.png"
+            cp "$R/mipmap-$d/ic_launcher.png" "$R/mipmap-$d/ic_launcher_round.png"
+            $IM resources/icon.png -resize ${IN}x${IN} -background none -gravity center -extent ${FS}x${FS} "$R/mipmap-$d/ic_launcher_foreground.png"
+          done
+          mkdir -p "$R/values"
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#000000</color>\n</resources>\n' > "$R/values/ic_launcher_background.xml"
+          for f in $(find "$R" -name 'splash.png'); do
+            read W H <<< "$($IM "$f" -format '%w %h' info:)"
+            M=$(( (W<H?W:H)*40/100 ))
+            $IM -size ${W}x${H} xc:black \( resources/icon.png -resize ${M}x${M} \) -gravity center -composite "$f"
+          done
+
       - name: Sync web assets
         run: npx cap sync android
 
@@ -77,17 +103,17 @@ jobs:
           ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk DJ-Deck.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk The-Groove-Mixer-Pro.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ-Deck-APK
-          path: DJ-Deck.apk
+          name: The-Groove-Mixer-Pro
+          path: The-Groove-Mixer-Pro.apk
 
       - name: Publish release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: DJ Deck build ${{ github.run_number }}
-          files: DJ-Deck.apk
+          name: The Groove Mixer Pro build ${{ github.run_number }}
+          files: The-Groove-Mixer-Pro.apk
