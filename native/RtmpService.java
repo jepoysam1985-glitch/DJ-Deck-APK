@@ -80,14 +80,14 @@ public class RtmpService extends Service implements ConnectChecker {
     display = new RtmpDisplay(this, true, this);
     display.setIntentResult(rc, data);
     if (!display.prepareVideo(w, h, fps, vb * 1000, 0, dpi)) {
-      throw new Exception("hindi ma-prepare ang video encoder");
+      throw new Exception("could not prepare the video encoder");
     }
     boolean au = false;
     if (Build.VERSION.SDK_INT >= 29) {
       au = display.prepareInternalAudio(ab * 1000, sr, true, false, false);
     }
     if (!au) au = display.prepareAudio(ab * 1000, sr, true, false, false);
-    if (!au) throw new Exception("hindi ma-prepare ang audio encoder");
+    if (!au) throw new Exception("could not prepare the audio encoder");
 
     String base = url.trim();
     while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
@@ -112,6 +112,6 @@ public class RtmpService extends Service implements ConnectChecker {
   }
   @Override public void onNewBitrate(long bitrate) { }
   @Override public void onDisconnect() { }
-  @Override public void onAuthError() { RtmpPlugin.emit("failed", "auth error: mali ang stream key"); ui.post(() -> stopSelf()); }
+  @Override public void onAuthError() { RtmpPlugin.emit("failed", "auth error: wrong stream key"); ui.post(() -> stopSelf()); }
   @Override public void onAuthSuccess() { }
 }

@@ -37,11 +37,11 @@ public class RtmpPlugin extends Plugin {
     String url = call.getString("url", "");
     String key = call.getString("key", "");
     if (url == null || url.trim().isEmpty() || key == null || key.trim().isEmpty()) {
-      call.reject("walang server URL o stream key");
+      call.reject("no server URL or stream key");
       return;
     }
     if (Build.VERSION.SDK_INT < 29) {
-      call.reject("Kailangan ng Android 10 pataas para makuha ang audio ng DJ Deck");
+      call.reject("Android 10 or newer is required to capture the DJ Deck audio");
       return;
     }
     MediaProjectionManager m = (MediaProjectionManager) getContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -52,7 +52,7 @@ public class RtmpPlugin extends Plugin {
   private void projResult(PluginCall call, ActivityResult result) {
     if (call == null) return;
     if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
-      call.reject("Hindi pinayagan ang screen capture");
+      call.reject("Screen capture was not allowed");
       return;
     }
     Intent i = new Intent(getContext(), RtmpService.class);
