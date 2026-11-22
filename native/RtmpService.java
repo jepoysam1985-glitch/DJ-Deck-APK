@@ -45,7 +45,7 @@ public class RtmpService extends Service implements ConnectChecker {
       nm.createNotificationChannel(new NotificationChannel(CH, "DJ Deck LIVE", NotificationManager.IMPORTANCE_LOW));
     }
     Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CH) : new Notification.Builder(this);
-    Notification n = b.setContentTitle("DJ Deck LIVE").setContentText("Nagla-live stream...")
+    Notification n = b.setContentTitle("DJ Deck LIVE").setContentText("Streaming live...")
         .setSmallIcon(android.R.drawable.ic_media_play).setOngoing(true).build();
     if (Build.VERSION.SDK_INT >= 29) {
       startForeground(8731, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
