@@ -1080,12 +1080,19 @@ const css=document.createElement('style');css.textContent=`
 .stt{display:flex;flex:none;border:2px solid #1aa7ba;border-radius:16px;overflow:hidden;background:#082f38}
 .stt div{padding:14px 18px;font:700 19px system-ui;color:#fff}
 .stt div.on{background:#00e5ff;color:#111}
-.stn{margin-top:10px;color:#00e5ff;font-size:14px;min-height:18px}`;
+.stn{margin-top:10px;color:#00e5ff;font-size:14px;min-height:18px}
+.stb{top:0;bottom:0;left:0;right:0;height:720px;z-index:9999;flex-direction:column;align-items:stretch!important;background:#062a33}
+.stb .stc{flex:1 1 auto;min-height:0;height:auto;padding-top:10px}
+.sth2{flex:none;display:flex;align-items:center;justify-content:space-between;gap:20px;height:104px;padding:0 max(28px,6%);background:#04202a;border-bottom:2px solid #12a4b8;box-sizing:border-box}
+.sth2 b{font:700 30px system-ui,sans-serif;color:#00e5ff;letter-spacing:1px}
+.sth2 .stx{min-width:240px;min-height:76px;display:flex;align-items:center;justify-content:center;padding:0 36px!important;font:800 28px system-ui,sans-serif!important;border-radius:999px;background:#00e5ff!important;color:#00232a!important;box-shadow:0 0 18px rgba(0,229,255,.55)}
+.stdone{display:flex;align-items:center;justify-content:center;min-height:84px;margin-top:22px;border-radius:22px;background:#00e5ff;color:#00232a;font:800 26px system-ui,sans-serif}
+.stdone:active{filter:brightness(1.3)}`;
 document.head.appendChild(css);
 const bk=document.createElement('div');bk.className='stb';stage.appendChild(bk);
 const card=document.createElement('div');card.className='stc';bk.appendChild(card);
-card.innerHTML=`<div class="sth"><b>SETTINGS</b><div class="stx" id="stClose">CLOSE</div></div>
-<div class="stcard"><div class="str"><div><h3>Latency</h3><p>LOW = mas mabilis ang pads, drums at mic (kusang lalaki ang buffer kung nahihirapan ang phone). STABLE = para sa mabagal na phone.</p><p id="stInfo" style="margin-top:6px"></p></div>
+const hd=document.createElement('div');hd.className='sth2';hd.innerHTML='<b>SETTINGS</b><div class="stx" id="stClose">✕ CLOSE</div>';bk.insertBefore(hd,card);
+card.innerHTML=`<div class="stcard"><div class="str"><div><h3>Latency</h3><p>LOW = mas mabilis ang pads, drums at mic (kusang lalaki ang buffer kung nahihirapan ang phone). STABLE = para sa mabagal na phone.</p><p id="stInfo" style="margin-top:6px"></p></div>
 <div class="stt"><div id="stS">STABLE</div><div id="stL">LOW</div></div></div><div class="stn" id="stNote"></div></div>
 <div class="stcard"><div class="str"><div style="flex:1"><h3>Quantize</h3><p>Hot cues snap to the beat.</p></div><div class="stsw" id="stQ"><i></i></div></div></div>
 <div class="stcard"><h3>Audio buffer</h3><p>Mas maliit = mas mabilis ang response pero mas madaling pumutok ang tunog sa mabagal na phone. AUTO = sundin ang Latency sa taas.</p><p id="stBI" style="margin-top:6px"></p><div class="stt" id="stB" style="margin-top:14px;display:inline-flex"></div><div class="stn" id="stNote2"></div></div>
@@ -1098,7 +1105,8 @@ card.innerHTML=`<div class="sth"><b>SETTINGS</b><div class="stx" id="stClose">CL
 <div><label>Password</label><input id="en_pass" type="password" placeholder="source password"></div>
 <div><label>Bitrate</label><select id="en_kbps"><option>64</option><option>96</option><option selected>128</option><option>192</option></select></div></div>
 <p id="stEI" style="margin-top:12px;color:#00e5ff"></p><div class="stdel stsv" id="stEs">SAVE SERVER</div></div>
-<div class="stcard"><div class="stlb">STORAGE</div><h3>BPM &amp; cover cache</h3><p>Naka-save na BPM scan at cover art para mabilis mag-load ulit. Safe i-clear — hindi nabubura ang mga kanta, playlist at settings.</p><p id="stCI" style="margin-top:6px;color:#00e5ff"></p><div class="stdel" id="stDel">CLEAR CACHE</div></div>`;
+<div class="stcard"><div class="stlb">STORAGE</div><h3>BPM &amp; cover cache</h3><p>Naka-save na BPM scan at cover art para mabilis mag-load ulit. Safe i-clear — hindi nabubura ang mga kanta, playlist at settings.</p><p id="stCI" style="margin-top:6px;color:#00e5ff"></p><div class="stdel" id="stDel">CLEAR CACHE</div></div>
+<div class="stdone" id="stDone">✕ CLOSE SETTINGS</div>`;
 let lat='low';try{lat=localStorage.getItem('dj_latency')||'low'}catch(e){}
 const q=i=>card.querySelector('#'+i),under={n:0,t:0,c:0};
 function paint(){q('stS').classList.toggle('on',lat==='stable');q('stL').classList.toggle('on',lat==='low')}
@@ -1117,7 +1125,9 @@ setInterval(()=>{if(!ctx||ctx.state!=='running')return;const n=performance.now()
   if(bk.style.display==='flex')info()},250);
 function open(){q('stNote').textContent='';paint();info();bk.style.display='flex'}
 window.__stClosed=0;const stShut=e=>{if(e&&e.preventDefault)e.preventDefault();bk.style.display='none';window.__stClosed=performance.now()};
-q('stClose').addEventListener('pointerdown',stShut);q('stClose').addEventListener('click',stShut);
+{const cx=hd.querySelector('#stClose');cx.addEventListener('pointerdown',stShut);cx.addEventListener('click',stShut)}
+q('stDone').addEventListener('click',stShut);
+addEventListener('keydown',e=>{if(e.key==='Escape'&&bk.style.display==='flex')stShut(e)});
 // Quantize toggle
 const qE=q('stQ');qE.classList.toggle('on',quantizeOn);
 qE.onclick=()=>{quantizeOn=!quantizeOn;qE.classList.toggle('on',quantizeOn);try{localStorage.setItem('dj_quantize',quantizeOn?'1':'0')}catch(e){}};
