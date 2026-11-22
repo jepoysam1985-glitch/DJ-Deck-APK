@@ -1117,7 +1117,7 @@ card.innerHTML=`<div class="stcard"><div class="str"><div><h3>Latency</h3><p>LOW
 <div><label>Sample rate (Hz)</label><select id="so_sr"><option>44100</option><option>48000</option></select></div>
 <div style="grid-column:1/-1"><label>Video codec</label><select id="so_codec"><option>H.264</option><option>H.265 (HEVC)</option></select></div></div>
 <p id="stSoI" style="margin-top:12px;color:#00e5ff"></p>
-<div class="stdel stsv" id="stSoS">SAVE ENCODER</div><div class="stdel" id="stSoR" style="margin-left:12px">RESET PRESET</div></div>
+<div class="stdel stsv" id="stSoS">SAVE ENCODER</div><div class="stdel" id="stSoR" style="margin-left:12px">RESET PRESET</div><div class="stdel go" id="stSoG" style="margin-left:12px">START LIVE</div></div>
 <div class="stcard"><div class="stlb">STORAGE</div><h3>BPM &amp; cover cache</h3><p>Naka-save na BPM scan at cover art para mabilis mag-load ulit. Safe i-clear — hindi nabubura ang mga kanta, playlist at settings.</p><p id="stCI" style="margin-top:6px;color:#00e5ff"></p><div class="stdel" id="stDel">CLEAR CACHE</div></div>
 <div class="stdone" id="stDone">✕ CLOSE SETTINGS</div>`;
 let lat='low';try{lat=localStorage.getItem('dj_latency')||'low'}catch(e){}
@@ -1176,7 +1176,7 @@ gb.innerHTML=gear+'<span style="font-size:11px;letter-spacing:.5px">SETTINGS</sp
 // ===== REC (MP3) + GO LIVE =====
 (function(){
 const css=document.createElement('style');css.textContent='.onair{background:#d4001a!important;color:#fff!important;animation:oa 1s infinite}@keyframes oa{50%{box-shadow:0 0 18px 4px #ff2a3a}}';document.head.appendChild(css);
-let lp=null;const loadLame=()=>window.lamejs?Promise.resolve(true):(lp=lp||new Promise(r=>{const x=document.createElement('script');x.src='https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';x.onload=()=>r(!!window.lamejs);x.onerror=()=>{lp=null;r(false)};document.head.appendChild(x);setTimeout(()=>r(!!window.lamejs),8000)}));
+let lp=null;const loadLame=()=>window.lamejs?Promise.resolve(true):(lp=lp||new Promise(r=>{const tryS=(src,fail)=>{const x=document.createElement('script');x.src=src;x.onload=()=>r(!!window.lamejs);x.onerror=fail;document.head.appendChild(x)};tryS('lame.min.js',()=>tryS('https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',()=>{lp=null;r(false)}));setTimeout(()=>r(!!window.lamejs),8000)}));
 loadLame();
 let rec=null,onAir=false;
 const recB=btn('● REC',-50,508,100,40,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
@@ -1624,7 +1624,7 @@ const g=id=>document.getElementById(id);
 if(!g('stSoT'))return;
 const P={
  youtube:{url:'rtmp://a.rtmp.youtube.com/live2',res:'1920x1080',fps:'30',vb:6000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'YouTube: 1080p30 ~ 4500-9000 kbps. Stream key: YouTube Studio > Go Live.'},
- tiktok:{url:'',res:'1080x1920',fps:'30',vb:4000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'TikTok: vertical 9:16. Ang server URL at stream key ay galing sa TikTok LIVE Studio at nagbabago kada live; i-paste mo mismo.'},
+ tiktok:{url:'',res:'1280x720',fps:'30',vb:4000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'TikTok: landscape (landscape ang DJ Deck). Ang server URL at stream key ay galing sa TikTok LIVE Studio at nagbabago kada live; i-paste mo mismo.'},
  facebook:{url:'rtmps://live-api-s.facebook.com:443/rtmp/',res:'1280x720',fps:'30',vb:4000,ab:'128',kf:'2',sr:'44100',codec:'H.264',note:'Facebook: hanggang 1080p30, keyframe 2s. Stream key: Live Producer.'}};
 const K='dj_enc_social';let d={},cur='youtube';
 try{d=JSON.parse(localStorage.getItem(K)||'{}');cur=localStorage.getItem(K+'_last')||'youtube'}catch(e){}
@@ -1641,6 +1641,20 @@ g('stSoS').addEventListener('click',()=>{d[cur]=read();let ok=1;try{localStorage
  say(ok?'Na-save ang '+cur.toUpperCase()+' encoder.':'Hindi na-save (storage error).')});
 g('stSoR').addEventListener('click',()=>{delete d[cur];try{localStorage.setItem(K,JSON.stringify(d))}catch(e){}fill();say('Binalik sa recommended preset.')});
 window.getSocialEncoder=p=>{p=p||cur;return Object.assign({},P[p],d[p]||{})};
+const RT=()=>{const C=window.Capacitor;return(C&&C.Plugins&&C.Plugins.Rtmp)||null};
+let live=false,lis=false;const gb=g('stSoG');
+const setLive=(v,t)=>{live=v;gb.textContent=v?'STOP LIVE':'START LIVE';gb.style.color=v?'#ff2a3a':'';if(t)g('stSoI').textContent=t};
+gb.addEventListener('click',async()=>{
+ const N=RT();if(!N){say('Gumagana lang ang LIVE sa APK (Android 10 pataas).');return}
+ if(live){try{await N.stop()}catch(e){}setLive(false,'Tapos na ang live.');return}
+ d[cur]=read();try{localStorage.setItem(K,JSON.stringify(d));localStorage.setItem(K+'_last',cur)}catch(e){}
+ const s=d[cur];if(!s.url||!s.key){say('Ilagay muna ang server URL at stream key.');return}
+ if(!lis){lis=true;try{N.addListener('state',ev=>{
+  if(ev.status==='live'){setLive(true,'LIVE na sa '+cur.toUpperCase()+'.');const c=g('stClose');if(c)c.click()}
+  else if(ev.status==='failed'||ev.status==='error'){setLive(false,'LIVE error: '+(ev.reason||''))}
+  else if(ev.status==='stopped'){setLive(false,'Tapos na ang live.')}})}catch(e){}}
+ try{await N.start({url:s.url,key:s.key,res:s.res,fps:+s.fps,vb:+s.vb,ab:+s.ab,kf:+s.kf,sr:+s.sr});setLive(false,'Pindutin ang START NOW sa lalabas na prompt...')}
+ catch(e){setLive(false,'LIVE: '+(e&&(e.message||e.errorMessage)||e))}});
 fill();
 })();
 

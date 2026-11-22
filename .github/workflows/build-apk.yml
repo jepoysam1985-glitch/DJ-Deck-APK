@@ -28,6 +28,9 @@ jobs:
             exit 1
           fi
 
+      - name: Bundle MP3 encoder (lamejs) para gumana ang GO LIVE kahit offline
+        run: curl -fsSL -o www/lame.min.js https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -47,13 +50,21 @@ jobs:
         run: |
           D=android/app/src/main/java/com/djdeck/app
           mkdir -p "$D"
-          cp native/TcpSourcePlugin.java native/FolderPickerPlugin.java native/MainActivity.java "$D/"
+          cp native/TcpSourcePlugin.java native/FolderPickerPlugin.java native/RtmpPlugin.java native/RtmpService.java native/MainActivity.java "$D/"
+
+      - name: Add RTMP library (RootEncoder)
+        run: |
+          sed -i "s#mavenCentral()#mavenCentral()\n        maven { url 'https://jitpack.io' }#" android/build.gradle
+          sed -i '0,/^dependencies {/s//dependencies {\n    implementation "com.github.pedroSG94.RootEncoder:library:2.5.5"/' android/app/build.gradle
+          cat android/build.gradle android/app/build.gradle
 
       - name: Patch manifest (landscape + permissions)
         run: |
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#<activity#<activity android:screenOrientation="sensorLandscape"#' "$M"
           sed -i 's#<application#<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application#' "$M"
+          sed -i 's#<application#<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application#' "$M"
+          sed -i 's#</application>#    <service android:name="com.djdeck.app.RtmpService" android:exported="false" android:foregroundServiceType="mediaProjection" />\n    </application>#' "$M"
           cat "$M"
 
       - name: Sync web assets
@@ -74,6 +85,7 @@ jobs:
           path: DJ-Deck.apk
 
       - name: Publish release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
