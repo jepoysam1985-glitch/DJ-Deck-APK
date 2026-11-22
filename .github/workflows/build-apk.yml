@@ -47,7 +47,7 @@ jobs:
         run: |
           D=android/app/src/main/java/com/djdeck/app
           mkdir -p "$D"
-          cp native/TcpSourcePlugin.java native/MainActivity.java "$D/"
+          cp native/TcpSourcePlugin.java native/FolderPickerPlugin.java native/MainActivity.java "$D/"
 
       - name: Patch manifest (landscape + permissions)
         run: |

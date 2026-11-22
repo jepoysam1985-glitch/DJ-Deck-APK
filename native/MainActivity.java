@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(TcpSourcePlugin.class);
+    registerPlugin(FolderPickerPlugin.class);
     super.onCreate(savedInstanceState);
     goImmersive();
   }
