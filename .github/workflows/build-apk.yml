@@ -36,6 +36,17 @@ jobs:
         with:
           node-version: 20
 
+      - name: Bundle ONNX Runtime Web + HT-Demucs model (AI stems)
+        run: |
+          mkdir -p www/ort www/models
+          npm install --no-save --prefix /tmp/ortw onnxruntime-web@1.22.0
+          D=/tmp/ortw/node_modules/onnxruntime-web/dist
+          cp "$D/ort.webgpu.bundle.min.mjs" www/ort/ort.webgpu.bundle.min.js
+          cp "$D/ort-wasm-simd-threaded.jsep.wasm" www/ort/
+          curl -fL --retry 3 -o www/models/htdemucs.onnx https://huggingface.co/StemSplitio/htdemucs-onnx/resolve/main/htdemucs_fp16weights.onnx
+          ls -la www/ort www/models
+          test "$(stat -c%s www/models/htdemucs.onnx)" -gt 100000000
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -57,6 +68,7 @@ jobs:
         run: |
           sed -i "s#mavenCentral()#mavenCentral()\n        maven { url 'https://jitpack.io' }#" android/build.gradle
           sed -i '0,/^dependencies {/s//dependencies {\n    implementation "com.github.pedroSG94.RootEncoder:library:2.5.5"/' android/app/build.gradle
+          sed -i '0,/^android {/s//android {\n    androidResources { noCompress "onnx", "wasm" }/' android/app/build.gradle
           cat android/build.gradle android/app/build.gradle
 
       - name: Patch manifest (landscape + permissions)
