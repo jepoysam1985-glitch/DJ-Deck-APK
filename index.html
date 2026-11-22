@@ -1127,8 +1127,8 @@ const css=document.createElement('style');css.textContent='.onair{background:#d4
 let lp=null;const loadLame=()=>window.lamejs?Promise.resolve(true):(lp=lp||new Promise(r=>{const x=document.createElement('script');x.src='https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';x.onload=()=>r(!!window.lamejs);x.onerror=()=>{lp=null;r(false)};document.head.appendChild(x);setTimeout(()=>r(!!window.lamejs),8000)}));
 loadLame();
 let rec=null,onAir=false;
-const recB=btn('● REC',-50,508,48,38,()=>toggleRec()),airB=btn('GO LIVE',2,508,48,38,()=>toggleAir());
-recB.style.fontSize=airB.style.fontSize='10px';recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';
+const recB=btn('● REC',-50,508,100,40,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
+recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';
 let air=null;
 // ---- NOW PLAYING -> server metadata (title na lalabas sa website) ----
 let nowI=-1,nowLast='',nowLastT='';
