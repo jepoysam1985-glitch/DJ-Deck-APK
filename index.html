@@ -76,6 +76,7 @@ input{display:none}
 .lpp{width:440px;max-height:92%;display:flex;flex-direction:column;gap:8px;background:#15181d;border:2px solid #777;border-radius:12px;padding:14px}
 .lpp .t{font:700 16px system-ui,sans-serif;color:var(--ac)}
 .lpl{overflow-y:auto;max-height:280px;display:flex;flex-direction:column;gap:8px}
+.lr.pld .n{color:#4ade80}
 .wl{position:absolute;top:0;height:50px;pointer-events:none;overflow:hidden;text-shadow:0 0 6px #000}
 .wl b,.wl span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:14px}
 .wl b{font:700 24px/28px system-ui,sans-serif;color:#fff;width:100%}.wl b u{display:inline-block;text-decoration:none;white-space:nowrap;padding-left:100%;animation:mq 12s linear infinite}@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-100%)}}.wl span{font:700 17px/20px ui-monospace,Menlo,monospace;color:#fff;opacity:1;width:100%}
@@ -428,7 +429,7 @@ const BQ=BANDS.map((f,k)=>{const lo=BANDS[Math.max(0,k-1)],hi=BANDS[Math.min(11,
 const eqDb=[new Float32Array(12),new Float32Array(12)],eqSet=[[],[]],eqLbl=[[],[]],eqCont=[],eqTabs=[];
 const info=[null,null],tok=[0,0],done=[false,false],syncOn=[false,false],trimDb=[0,0],lockOn=[false,false],lockT=[0,0],lkBtn=[],fdBtn=[],fadeT=[null,null];let fadeLen=8;
 let autoEq=false,autoMix=false,amixLen=10,amixBusy=false,amixAbort=false,eqOpen=false,eqDeck=0,eqBack,eqRoot,eqInfo,eqAutoBtn;
-let flashMsg='',flashUntil=0,idleMsg='';
+let flashMsg='',flashUntil=0,idleMsg='';const amixLoadT=[0,0];
 const fmtDb=v=>Math.abs(v)<.05?'0':(v>0?'+':'')+v.toFixed(1);
 const fmtT=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const stat=document.createElement('div');stat.className='stat';midEl.appendChild(stat);
@@ -684,7 +685,7 @@ function initEQ(){
   eqLayout();showEQ(0)}
 
 // ---- AUTOMIX ----
-function setAutoMix(on){autoMix=on;amBtn.classList.toggle('on',on);if(!on&&amixBusy)amixAbort=true;
+function setAutoMix(on){autoMix=on;amixLoadT[0]=amixLoadT[1]=0;amBtn.classList.toggle('on',on);if(!on&&amixBusy)amixAbort=true;
   flash(on?'AUTOMIX: ON — switches to the next deck automatically':'AUTOMIX: OFF')}
 function amixClean(x,y){const now=ctx.currentTime;[x,y].forEach(i=>{const c=chain[i];
   c.fade.gain.cancelScheduledValues(now);c.fade.gain.setValueAtTime(1,now);
@@ -722,11 +723,18 @@ function amixCheck(){
   const pl=[0,1].filter(i=>chain[i]&&!audios[i].paused&&!audios[i].ended);
   if(pl.length!==1){idleMsg=pl.length?'':'AUTOMIX: play one deck first';return}
   const x=pl[0],y=1-x,ax=audios[x],ay=audios[y];
-  if(!chain[y]||!ay.src||!isFinite(ay.duration)||done[y]){idleMsg=`AUTOMIX: load a new song on Deck ${L[y]}`;return}
+  if(!chain[y]||!ay.src||!isFinite(ay.duration)||done[y]){
+    const need=!chain[y]||!ay.src||done[y],since=performance.now()-amixLoadT[y];
+    if(need&&window.libAutoNext&&since>20000){
+      const r=libAutoNext(x,y);
+      if(r===1){idleMsg='AUTOMIX: playlist finished — no more songs';return}
+      if(r){amixLoadT[y]=performance.now();idleMsg=`AUTOMIX: loading ${r} → Deck ${L[y]}`;return}}
+    else if(need&&amixLoadT[y]&&since<=20000){idleMsg=`AUTOMIX: loading next song → Deck ${L[y]}`;return}
+    idleMsg=need?`AUTOMIX: load a new song on Deck ${L[y]} (or tap ▶ AUTOMIX in a playlist)`:`AUTOMIX: preparing Deck ${L[y]}`;return}
   if(!isFinite(ax.duration))return;
   const rem=(ax.duration-ax.currentTime)/ax.playbackRate;
   idleMsg=`AUTOMIX: ${L[x]} → ${L[y]} in ${fmtT(Math.max(0,rem-amixLen-2.4))}`;
-  if(rem<=amixLen+2.4)startAutomix(x,y)}
+  if(rem<=amixLen+2.4){if(!info[y]&&amixLoadT[y]&&performance.now()-amixLoadT[y]<15000)return;startAutomix(x,y)}}
 
 // ---- buttons sa gitna ----
 const syncBtn=[0,1].map(d=>{const b=btn('SYNC '+L[d],58,170,72,40,()=>setSync(d,!syncOn[d]),decks[d]);b.style.fontSize='11px';return b});
@@ -880,7 +888,7 @@ setInterval(()=>{for(let d=0;d<2;d++){const l=loop[d],a=audios[d];
 const AUD=/\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|wma|amr|weba)$/i,col=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
 const lib={bd:new Map(),bpm:{},dk:[null,null],fh:new Map(),tracks:[],map:new Map(),dirs:[],pl:[],hist:[],tab:'music',sub:null,scanning:false,need:false,last:0,msg:'',info:''};
 const LS=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'null');localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}};
-lib.bpm=LS('djlib_bpm')||{};lib.pl=LS('djlib_pl')||[];lib.hist=LS('djlib_hist')||[];
+lib.bpm=LS('djlib_bpm')||{};lib.pl=LS('djlib_pl')||[];lib.hist=LS('djlib_hist')||[];lib.ap=LS('djlib_ap')||null;
 const idb=()=>new Promise((r,j)=>{const q=indexedDB.open('djlib',1);q.onupgradeneeded=()=>q.result.createObjectStore('k');q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)});
 const idbGet=async k=>{try{const d=await idb();return await new Promise(r=>{const q=d.transaction('k').objectStore('k').get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})}catch(e){return null}};
 const idbSet=async(k,v)=>{try{const d=await idb();await new Promise(r=>{const t=d.transaction('k','readwrite');t.objectStore('k').put(v,k);t.oncomplete=t.onerror=()=>r()})}catch(e){}};
@@ -994,8 +1002,25 @@ document.body.append(fi,di);
 // ---- load / history ----
 function histAdd(k,n,f,d){lib.hist.unshift({k,n,f:f||'',d,t:Date.now()});lib.hist.length=Math.min(lib.hist.length,200);LS('djlib_hist',lib.hist)}
 window.libHist=(n,d)=>(lib.dk[d]=null,histAdd('file/'+n,n.replace(/\.[^.]+$/,''),'Direct load',d));
-async function loadTrack(t,d){try{if(t.src.full)msg('Loading '+t.name+'…',60000);const f=t.src.full?await t.src.full():t.src.getFile?await t.src.getFile():t.src;loaders[d](f);lib.dk[d]=t.key;histAdd(t.key,t.name,t.folder,d);
+async function loadTrack(t,d,plId){try{if(plId){const pp=lib.pl.find(q=>q.id===plId);if(pp){if(pp.items.length&&pp.items.every(i=>(pp.played||[]).includes(i.k)))pp.played=[];savePl();setAp(plId)}}if(t.src.full)msg('Loading '+t.name+'…',60000);const f=t.src.full?await t.src.full():t.src.getFile?await t.src.getFile():t.src;loaders[d](f);lib.dk[d]=t.key;histAdd(t.key,t.name,t.folder,d);
   msg('Deck '+L[d]+' ← '+t.name,4000);flash('Deck '+L[d]+': '+t.name)}catch(e){msg('Could not load: '+e.message+' (tap ⟳ SCAN to allow)',6000)}}
+// ---- AUTOMIX × PLAYLIST: sunod-sunod + ✓ pag na-play na ----
+function setAp(id){lib.ap=id;LS('djlib_ap',id)}
+function markPlayed(k){let ch=false;lib.pl.forEach(p=>{if(p.items.some(i=>i.k===k)){p.played=p.played||[];if(!p.played.includes(k)){p.played.push(k);ch=true}}});
+  if(ch){savePl();if(open&&lib.tab==='playlist'){const st=list.scrollTop;render();list.scrollTop=st}}}
+setInterval(()=>{for(let d=0;d<2;d++){const a=audios[d],k=lib.dk[d];if(a&&k&&!a.paused&&a.currentTime>2)markPlayed(k)}},1000);
+// returns: 0 = walang active playlist · 1 = tapos na ang playlist · song name = naglo-load na ng susunod
+window.libAutoNext=(x,y)=>{const p=lib.pl.find(q=>q.id===lib.ap);if(!p)return 0;
+  const cur=lib.dk[x],s=cur?p.items.findIndex(i=>i.k===cur):-1,pd=new Set(p.played||[]);
+  const nx=(s>=0?p.items.slice(s+1):p.items).find(i=>{const t=lib.map.get(i.k);return!pd.has(i.k)&&t&&t.src&&i.k!==cur});
+  if(!nx)return 1;const t=lib.map.get(nx.k);loadTrack(t,y);return t.name};
+function startPl(p){setAp(p.id);
+  if(p.items.length&&p.items.every(i=>(p.played||[]).includes(i.k))){p.played=[];savePl()}
+  const pd=new Set(p.played||[]);if(!autoMix)setAutoMix(true);
+  if([0,1].some(i=>audios[i]&&!audios[i].paused&&!audios[i].ended)){msg('AUTOMIX will follow '+p.name,4000);return render()}
+  const nx=p.items.find(i=>{const t=lib.map.get(i.k);return!pd.has(i.k)&&t&&t.src});
+  if(!nx)return msg('No songs available in this playlist (scan the folder)',5000);
+  loadTrack(lib.map.get(nx.k),0).then(()=>{try{audios[0].play().catch(()=>{});playBs[0].classList.add('on')}catch(e){}open=false;back.style.display='none'})}
 // ---- playlists ----
 function newPl(){const p={id:Date.now().toString(36),name:'Playlist '+(lib.pl.length+1),items:[]};lib.pl.push(p);savePl();return p}
 function addTo(p,t){if(p.items.some(i=>i.k===t.key))return msg('Already in '+p.name+'',3000);p.items.push({k:t.key,n:t.name});savePl();msg('Added to '+p.name,3000)}
@@ -1020,9 +1045,9 @@ async function delFolder(P){const inF=t=>t.folder===P||t.folder.startsWith(P+'/'
   const st=list.scrollTop;render();list.scrollTop=st;
   msg(real?'Folder deleted from phone: '+P:'Folder removed from library (not deleted from phone): '+P,5000)}
 // ---- rows ----
-function trow(t,o){o=o||{};const r=el('div','lr'),x=el('div','tx');x.append(el('div','n',t.name),el('div','s',o.sub||t.folder));r.append(cvEl(t),x);
+function trow(t,o){o=o||{};const r=el('div','lr'),x=el('div','tx');x.append(el('div','n',(o.ck?'✓ ':'')+t.name),el('div','s',o.sub||t.folder));if(o.ck)r.classList.add('pld');r.append(cvEl(t),x);
   if(!t.src){r.classList.add('dim');x.lastChild.textContent=(o.sub?o.sub+' · ':'')+'not in library (scan the folder)';return r}
-  r.append(bpEl(t));[0,1].forEach(d=>r.append(lbtn(L[d],()=>loadTrack(t,d),'sm dk'+d)));
+  r.append(bpEl(t));[0,1].forEach(d=>r.append(lbtn(L[d],()=>loadTrack(t,d,o.pl),'sm dk'+d)));
   if(o.rm)r.append(lbtn('✕',o.rm,'sm'));else{r.append(lbtn('＋',()=>pick(t),'sm'));if(!o.nodel){const x=armed('✖',()=>delTrack(t));x.classList.add('xd');r.append(x)}}return r}
 function grow(a,b,fn,del){const r=el('div','lr go'),x=el('div','tx');x.append(el('div','n',a),el('div','s',b));r.append(x);
   if(del){const d=armed('✖',del);d.classList.add('xd');d.addEventListener('click',e=>e.stopPropagation());r.append(d)}r.append(el('div','n','›'));r.onclick=fn;return r}
@@ -1041,9 +1066,10 @@ function render(){
   else if(T==='playlist'){
     if(!S){info=lib.pl.length+' playlist';act.append(lbtn('＋ NEW PLAYLIST',()=>{lib.sub={id:newPl().id};render()},'sm'));
       fill(lib.pl,p=>grow('♪ '+p.name,p.items.length+' songs',()=>{lib.sub={id:p.id};render()}),'No playlists yet.\nTap ＋ on a song you want to add.')}
-    else{const p=lib.pl.find(q=>q.id===S.id);if(!p){lib.sub=null;return render()}info='Playlist: '+p.name+' · '+p.items.length+' songs';back2();
+    else{const p=lib.pl.find(q=>q.id===S.id);if(!p){lib.sub=null;return render()}const pd=new Set(p.played||[]);info='Playlist: '+p.name+' · '+p.items.length+' songs · '+p.items.filter(i=>pd.has(i.k)).length+' ✓'+(lib.ap===p.id&&autoMix?' · AUTOMIX ACTIVE':'');back2();
+      act.append(lbtn('▶ AUTOMIX',()=>startPl(p),'sm on'),lbtn('RESET ✓',()=>{p.played=[];savePl();render()},'sm'));
       act.append(armed('DELETE',()=>{lib.pl=lib.pl.filter(q=>q!==p);savePl();lib.sub=null;render()}));
-      fill(p.items,i=>trow(stub(i.k,i.n),{rm:()=>{p.items=p.items.filter(q=>q!==i);savePl();render();msg('Removed from playlist',2500)}}),'Empty. Use ＋ in the MUSIC tab.')}}
+      fill(p.items,i=>trow(stub(i.k,i.n),{ck:pd.has(i.k),pl:p.id,rm:()=>{p.items=p.items.filter(q=>q!==i);savePl();render();msg('Removed from playlist',2500)}}),'Empty. Use ＋ in the MUSIC tab.')}}
   else if(T==='folders'){const P=S?S.f:'',pre=P?P+'/':'',ch=new Map(),own=[];
     lib.tracks.forEach(t=>{if(P&&t.folder===P){own.push(t);return}if(P&&!t.folder.startsWith(pre))return;
       const nm=(P?t.folder.slice(pre.length):t.folder).split('/')[0];ch.set(nm,(ch.get(nm)||0)+1)});
