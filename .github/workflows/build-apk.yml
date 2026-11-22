@@ -93,6 +93,14 @@ jobs:
             $IM -size ${W}x${H} xc:black \( resources/icon.png -resize ${M}x${M} \) -gravity center -composite "$f"
           done
 
+      - name: Android 12+ splash theme (black background + logo)
+        run: |
+          S=android/app/src/main/res/values/styles.xml
+          if [ -f resources/icon.png ] && grep -q 'parent="Theme.SplashScreen"' "$S"; then
+            sed -i '/<style name="AppTheme.NoActionBarLaunch"/a\        <item name="windowSplashScreenBackground">#000000</item>\n        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>' "$S"
+          fi
+          cat "$S"
+
       - name: Sync web assets
         run: npx cap sync android
 
