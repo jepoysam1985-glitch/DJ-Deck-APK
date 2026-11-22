@@ -169,7 +169,7 @@ cfg.forEach((d,i)=>{
 // ===== Mixer: volume, crossfader, BPM =====
 const midEl=document.createElement('div');midEl.className='mid';stage.appendChild(midEl);window.midEl=midEl;
 const vol=[1,1];let xf=0;
-function applyGain(){const g=amixBypass?[1,1]:[xf<=0?1:1-xf, xf>=0?1:1+xf];audios.forEach((a,i)=>{const v=Math.max(0,Math.min(1,vol[i]*g[i]));
+function applyGain(){const g=amixBypass?[1,1]:[xf<=0?1:1-xf, xf>=0?1:1+xf];audios.forEach((a,i)=>{const v=Math.max(0,Math.min(1,vol[i]*g[i]*(window.__duck==null?1:window.__duck)));
   if(chain[i]&&ctx)chain[i].fader.gain.setTargetAtTime(v,ctx.currentTime,.015);else if(a)a.volume=v})}
 function slider(x,y,len,vertical,val,cb,par){
   const g=document.createElement('div');g.className='groove';
@@ -872,24 +872,104 @@ const hpMain=[hpI(btn('HP A',-234,135,58,46,()=>setHp(0,!hp[0]))),hpI(btn('HP B'
 hpMain.forEach((b,i)=>hpBtns[i].push(b));
 const cueBtns=[0,1].map(d=>{const b=btn('CUE/LOOP',-24,240,72,40,()=>(cueOpen&&cueDeck===d)?closeCue():openCue(d),decks[d]);b.style.display='none';return b});
 initCue();
-// ===== MIC (katabi ng HP CUE button) =====
-let micOn=false,micStream=null,micSrc=null,micG=null;
+// ===== MIC (katabi ng HP CUE) + MIC SETTINGS (hawak ang MIC button) =====
+const MS0={aec:1,ns:1,agc:0,gate:1,lvl:.4,gth:.3,lc:.25,hc:.8,pres:.4,comp:.4,rev:0,duck:.3,dev:''};
+let MS=Object.assign({},MS0);
+try{Object.assign(MS,JSON.parse(localStorage.getItem('dj_mic_v1')||'{}'))}catch(e){}
+const msSave=()=>{try{localStorage.setItem('dj_mic_v1',JSON.stringify(MS))}catch(e){}};
+let micOn=false,micStream=null,mN=null,micDevs=[],duckCur=1,gateHold=0,micTm=null,micOnB=null,micBack=null,micRoot=null,micFill=null,micThr=null;
+const micSet={};
 const MICSVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>';
-const micBtn=btn('MIC',-170,135,58,46,()=>toggleMic());micBtn.innerHTML=MICSVG;micBtn.style.padding='0';
-function micOff(){try{micG&&micG.disconnect()}catch(e){}try{micSrc&&micSrc.disconnect()}catch(e){}if(micStream)micStream.getTracks().forEach(t=>t.stop());micStream=micSrc=micG=null;micOn=false;micBtn.classList.remove('on')}
-async function toggleMic(){
-  if(micOn){micOff();flash('MIC OFF');return}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){flash('MIC: hindi supported sa device');return}
+const micBtn=btn('MIC',-170,135,58,46,()=>{micTm=setTimeout(()=>{micTm=null;openMic()},450)});
+['pointerup','pointercancel'].forEach(ev=>micBtn.addEventListener(ev,()=>{if(micTm){clearTimeout(micTm);micTm=null;if(ev==='pointerup')toggleMic()}}));
+micBtn.innerHTML=MICSVG;micBtn.style.padding='0';
+const mkIR=s=>{const n=Math.floor(ctx.sampleRate*s),b=ctx.createBuffer(2,n,ctx.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.6)}return b};
+function micApply(){if(!mN||!ctx)return;const t=ctx.currentTime;
+  mN.hpf.frequency.setTargetAtTime(60+MS.lc*340,t,.02);mN.lp.frequency.setTargetAtTime(3000+MS.hc*13000,t,.02);
+  mN.pres.gain.setTargetAtTime(-6+MS.pres*15,t,.02);
+  mN.comp.threshold.setTargetAtTime(-8-MS.comp*32,t,.02);mN.comp.ratio.setTargetAtTime(1+MS.comp*11,t,.02);
+  mN.lvl.gain.setTargetAtTime(MS.lvl*2.5,t,.02);mN.rs.gain.setTargetAtTime(MS.rev*.9,t,.02)}
+function micBuild(stream){
+  const src=ctx.createMediaStreamSource(stream),hpf=ctx.createBiquadFilter(),an=ctx.createAnalyser(),lp=ctx.createBiquadFilter(),pres=ctx.createBiquadFilter(),
+    gate=ctx.createGain(),comp=ctx.createDynamicsCompressor(),lvl=ctx.createGain(),rs=ctx.createGain(),conv=ctx.createConvolver();
+  hpf.type='highpass';hpf.Q.value=.7;lp.type='lowpass';lp.Q.value=.7;pres.type='peaking';pres.frequency.value=3200;pres.Q.value=.9;
+  an.fftSize=1024;comp.knee.value=18;comp.attack.value=.004;comp.release.value=.25;conv.buffer=mkIR(1.6);
+  src.connect(hpf);hpf.connect(an);hpf.connect(lp);lp.connect(pres);pres.connect(gate);gate.connect(comp);comp.connect(lvl);
+  lvl.connect(mixBus);lvl.connect(rs);rs.connect(conv);conv.connect(mixBus);
+  mN={src,hpf,an,lp,pres,gate,comp,lvl,rs,conv,buf:new Uint8Array(1024)};micApply()}
+function micOff(){if(mN){Object.values(mN).forEach(n=>{try{n.disconnect&&n.disconnect()}catch(e){}})}mN=null;
+  if(micStream)micStream.getTracks().forEach(t=>t.stop());micStream=null;micOn=false;micBtn.classList.remove('on');if(micOnB)micOnB.classList.remove('on')}
+async function micStart(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){flash('MIC: hindi supported sa device');return false}
   try{
     if(!ctx||!mixBus){try{ensureCtx(0)}catch(e){}}
-    if(!ctx||!mixBus){flash('MIC: hindi ma-start ang audio');return}
-    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    if(!ctx||!mixBus){flash('MIC: hindi ma-start ang audio');return false}
+    const a={echoCancellation:!!MS.aec,noiseSuppression:!!MS.ns,autoGainControl:!!MS.agc};if(MS.dev)a.deviceId={exact:MS.dev};
+    try{micStream=await navigator.mediaDevices.getUserMedia({audio:a})}
+    catch(e){if(MS.dev&&e&&e.name==='OverconstrainedError'){MS.dev='';delete a.deviceId;micStream=await navigator.mediaDevices.getUserMedia({audio:a})}else throw e}
     if(ctx.state==='suspended')ctx.resume();
-    micSrc=ctx.createMediaStreamSource(micStream);micG=ctx.createGain();micG.gain.value=1;
-    micSrc.connect(micG);micG.connect(mixBus);
-    micOn=true;micBtn.classList.add('on');flash('MIC ON · gumamit ng headphones para walang feedback',5000);
-  }catch(err){micOff();flash('MIC: '+(err&&err.name==='NotAllowedError'?'hindi pinayagan ang mic permission':'hindi ma-open ang mic'))}
+    micBuild(micStream);micOn=true;micBtn.classList.add('on');if(micOnB)micOnB.classList.add('on');return true
+  }catch(err){micOff();flash('MIC: '+(err&&err.name==='NotAllowedError'?'hindi pinayagan ang mic permission':'hindi ma-open ang mic'));return false}}
+async function toggleMic(){if(micOn){micOff();flash('MIC OFF');return}
+  if(await micStart())flash('MIC ON · hawak ang MIC button = settings · gumamit ng headphones',5000)}
+async function micRestart(){if(!micOn)return;micOff();await micStart()}
+function openMic(){if(cueOpen)closeCue();micBack.style.display='block'}
+function closeMic(){micBack.style.display='none'}
+function initMic(){
+  micBack=document.createElement('div');micBack.className='eqback';stage.appendChild(micBack);
+  micRoot=document.createElement('div');micRoot.className='mid';micBack.appendChild(micRoot);
+  const T=(txt,l,t,cls)=>{const e=document.createElement('div');e.className=cls||'cl';e.textContent=txt;e.style.left=l+'px';e.style.top=t+'px';micRoot.appendChild(e);return e};
+  T('MIC SETTINGS',-374,30,'eqt');
+  micOnB=btn('MIC ON / OFF',-110,20,140,46,()=>toggleMic(),micRoot);micOnB.classList.toggle('on',micOn);
+  btn('RESET',50,20,100,46,()=>{MS=Object.assign({},MS0,{dev:MS.dev});sync(true)},micRoot);
+  btn('CLOSE',274,20,100,46,closeMic,micRoot);
+  const PR={
+    VOICE:{aec:1,ns:1,agc:0,gate:1,lvl:.4,gth:.3,lc:.3,hc:.75,pres:.55,comp:.5,rev:0,duck:.35},
+    SINGER:{aec:1,ns:0,agc:0,gate:0,lvl:.38,gth:.15,lc:.15,hc:.9,pres:.45,comp:.35,rev:.25,duck:.2},
+    RADIO:{aec:1,ns:1,agc:1,gate:1,lvl:.45,gth:.3,lc:.35,hc:.6,pres:.65,comp:.75,rev:0,duck:.5},
+    CLEAN:{aec:1,ns:0,agc:0,gate:0,lvl:.4,gth:.1,lc:.1,hc:1,pres:.4,comp:0,rev:0,duck:0}};
+  let px=-374;Object.keys(PR).forEach(k=>{btn(k,px,76,110,44,()=>{MS=Object.assign({},MS,PR[k]);sync(true)},micRoot);px+=118});
+  const devB=btn('INPUT: DEFAULT',100,76,274,44,()=>cycleDev(),micRoot);
+  const devLbl=()=>{const d=micDevs.find(x=>x.deviceId===MS.dev);devB.textContent='INPUT: '+String((d&&d.label)||(MS.dev?'CUSTOM':'DEFAULT')).slice(0,22).toUpperCase()};
+  async function cycleDev(){
+    try{const all=await navigator.mediaDevices.enumerateDevices();
+      micDevs=[{deviceId:'',label:'DEFAULT'}].concat(all.filter(d=>d.kind==='audioinput'&&d.deviceId!=='default'&&d.deviceId!=='communications'))}
+    catch(e){micDevs=[{deviceId:'',label:'DEFAULT'}]}
+    let i=micDevs.findIndex(d=>d.deviceId===MS.dev);i=(i+1)%micDevs.length;MS.dev=micDevs[i].deviceId;devLbl();msSave();micRestart()}
+  const tb={};
+  [['aec','ECHO CANCEL',-374,180],['ns','NOISE SUPPRESS',-188,180],['agc','AUTO GAIN',-2,180],['gate','NOISE GATE',184,190]].forEach(d=>{
+    tb[d[0]]=btn(d[1],d[2],128,d[3],44,()=>{MS[d[0]]=MS[d[0]]?0:1;sync();if(d[0]!=='gate')micRestart()},micRoot)});
+  const mt=document.createElement('div');mt.style.cssText='position:absolute;left:-374px;top:186px;width:748px;height:16px;background:#0a0d11;border:1px solid #556;border-radius:8px;overflow:hidden';
+  micFill=document.createElement('div');micFill.style.cssText='height:100%;width:0;background:#556';
+  micThr=document.createElement('div');micThr.style.cssText='position:absolute;top:0;width:3px;height:100%;background:#ff4d4d';
+  mt.append(micFill,micThr);micRoot.appendChild(mt);
+  T('MIC LEVEL  (pulang guhit = gate threshold)',-374,206);
+  const SD=[['lvl','MIC LEVEL',v=>Math.round(v*250)+'%'],['gth','GATE THRESHOLD',v=>Math.round(v*100)+'%'],
+    ['lc','LOW CUT',v=>Math.round(60+v*340)+' Hz'],['hc','HIGH CUT',v=>((3000+v*13000)/1000).toFixed(1)+' kHz'],
+    ['pres','PRESENCE (EQ)',v=>(-6+v*15).toFixed(1)+' dB'],['comp','COMPRESSOR',v=>Math.round(v*100)+'%'],
+    ['rev','REVERB / ECHO FX',v=>Math.round(v*100)+'%'],['duck','DUCK MUSIC',v=>Math.round(v*100)+'%']];
+  SD.forEach((d,n)=>{const x=n<4?-350:40,y=280+(n%4)*76,L=T('',x-24,y-38);
+    micSet[d[0]]=slider(x,y,300,false,MS[d[0]],v=>{MS[d[0]]=v;L.textContent=d[1]+':  '+d[2](v);micApply();msSave()},micRoot)});
+  T('Kung may echo: ON ang ECHO CANCEL at NOISE GATE, ibaba ang MIC LEVEL, o gumamit ng headphones.',-374,566);
+  function sync(fromPreset){
+    if(fromPreset)Object.keys(micSet).forEach(k=>micSet[k](MS[k]));
+    Object.keys(tb).forEach(k=>tb[k].classList.toggle('on',!!MS[k]));
+    devLbl();msSave();if(fromPreset)micRestart()}
+  sync();
 }
+setInterval(()=>{
+  let rms=0;
+  if(micOn&&mN){mN.an.getByteTimeDomainData(mN.buf);let s=0;for(let i=0;i<mN.buf.length;i++){const v=(mN.buf[i]-128)/128;s+=v*v}rms=Math.sqrt(s/mN.buf.length)}
+  const thr=MS.gth*.12+.003,voice=rms>(MS.gate?thr:.02);
+  if(voice)gateHold=Date.now()+(MS.gate?250:400);
+  const open=Date.now()<gateHold;
+  if(micOn&&mN&&ctx)mN.gate.gain.setTargetAtTime(MS.gate?(open?1:0):1,ctx.currentTime,open?.01:.12);
+  const dt=(micOn&&open&&MS.duck>0)?1-MS.duck*.7:1;
+  const nd=dt<duckCur?Math.max(dt,duckCur-.1):Math.min(dt,duckCur+.03);
+  if(nd!==duckCur){duckCur=nd;window.__duck=duckCur;try{applyGain()}catch(e){}}
+  if(micBack&&micBack.style.display==='block'&&micFill){micFill.style.width=(Math.min(1,rms*3.5)*100)+'%';micFill.style.background=open?'#22d13a':'#556';micThr.style.left=(Math.min(1,thr*3.5)*100)+'%'}
+},30);
+initMic();
 setInterval(()=>{for(let d=0;d<2;d++){const l=loop[d],a=audios[d];
   if(l.on&&l.in!=null&&l.out!=null&&a&&!a.paused&&cur(d)>=l.out)a.currentTime=l.in}},10);
 
