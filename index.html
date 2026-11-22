@@ -872,6 +872,24 @@ const hpMain=[hpI(btn('HP A',-234,135,58,46,()=>setHp(0,!hp[0]))),hpI(btn('HP B'
 hpMain.forEach((b,i)=>hpBtns[i].push(b));
 const cueBtns=[0,1].map(d=>{const b=btn('CUE/LOOP',-24,240,72,40,()=>(cueOpen&&cueDeck===d)?closeCue():openCue(d),decks[d]);b.style.display='none';return b});
 initCue();
+// ===== MIC (katabi ng HP CUE button) =====
+let micOn=false,micStream=null,micSrc=null,micG=null;
+const MICSVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>';
+const micBtn=btn('MIC',-170,135,58,46,()=>toggleMic());micBtn.innerHTML=MICSVG;micBtn.style.padding='0';
+function micOff(){try{micG&&micG.disconnect()}catch(e){}try{micSrc&&micSrc.disconnect()}catch(e){}if(micStream)micStream.getTracks().forEach(t=>t.stop());micStream=micSrc=micG=null;micOn=false;micBtn.classList.remove('on')}
+async function toggleMic(){
+  if(micOn){micOff();flash('MIC OFF');return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){flash('MIC: hindi supported sa device');return}
+  try{
+    if(!ctx||!mixBus){try{ensureCtx(0)}catch(e){}}
+    if(!ctx||!mixBus){flash('MIC: hindi ma-start ang audio');return}
+    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    if(ctx.state==='suspended')ctx.resume();
+    micSrc=ctx.createMediaStreamSource(micStream);micG=ctx.createGain();micG.gain.value=1;
+    micSrc.connect(micG);micG.connect(mixBus);
+    micOn=true;micBtn.classList.add('on');flash('MIC ON · gumamit ng headphones para walang feedback',5000);
+  }catch(err){micOff();flash('MIC: '+(err&&err.name==='NotAllowedError'?'hindi pinayagan ang mic permission':'hindi ma-open ang mic'))}
+}
 setInterval(()=>{for(let d=0;d<2;d++){const l=loop[d],a=audios[d];
   if(l.on&&l.in!=null&&l.out!=null&&a&&!a.paused&&cur(d)>=l.out)a.currentTime=l.in}},10);
 
