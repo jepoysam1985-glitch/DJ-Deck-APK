@@ -74,6 +74,10 @@ jobs:
             echo "::warning::resources/icon.png not found - default icon will be used. Upload your logo to resources/icon.png and re-run."
             exit 0
           fi
+          if ! command -v magick >/dev/null 2>&1 && ! command -v convert >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq imagemagick
+          fi
           IM=$(command -v magick || command -v convert)
           R=android/app/src/main/res
           declare -A LG=( [mdpi]=48 [hdpi]=72 [xhdpi]=96 [xxhdpi]=144 [xxxhdpi]=192 )
