@@ -121,7 +121,7 @@ const playBs=[],chain=[null,null],tempoSet=[],bpmBase=[0,0],bpmSp=[];let progTem
 function vp(){const v=window.visualViewport;return{w:v?v.width:innerWidth,h:v?v.height:innerHeight}}
 function fit(){const p=vp(),s=p.h/720;W=p.w/s;   // pare-parehong scale = hindi nababago ang bilog
   stage.style.transform=`scale(${s})`;stage.style.width=W+'px';
-  vl.style.left=(W/2)+'px';if(window.midEl)midEl.style.left=(W/2)+'px';if(window.eqRoot)eqRoot.style.left=(W/2)+'px';if(window.cueRoot)cueRoot.style.left=(W/2)+'px';if(window.padRoot)padRoot.style.left=(W/2)+'px';if(window.layoutPads)layoutPads();if(window.eqLayout)eqLayout();if(window.tmpEl)tmpEl[1].style.left=W+'px';if(window.xfLayout)xfLayout();
+  vl.style.left=(W/2)+'px';if(window.midEl)midEl.style.left=(W/2)+'px';if(window.eqRoot)eqRoot.style.left=(W/2)+'px';if(window.micRoot)micRoot.style.left=(W/2)+'px';if(window.micEqRoot)micEqRoot.style.left=(W/2)+'px';if(window.cueRoot)cueRoot.style.left=(W/2)+'px';if(window.padRoot)padRoot.style.left=(W/2)+'px';if(window.layoutPads)layoutPads();if(window.eqLayout)eqLayout();if(window.micEqLayout)micEqLayout();if(window.tmpEl)tmpEl[1].style.left=W+'px';if(window.xfLayout)xfLayout();
   const dl=Math.max(280,W/4-25);decks[0]&&(decks[0].style.left=dl+'px');decks[1]&&(decks[1].style.left=(W-dl)+'px')}
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,200));document.addEventListener('fullscreenchange',()=>setTimeout(fit,100));document.addEventListener('webkitfullscreenchange',()=>setTimeout(fit,100));if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 try{screen.orientation.lock('landscape').catch(()=>{})}catch(e){}
@@ -884,26 +884,30 @@ const MEQK='dj_mic_eq';let MEQ=new Array(12).fill(0);
 try{const a=JSON.parse(localStorage.getItem(MEQK)||'null');if(Array.isArray(a)&&a.length===12)MEQ=a.map(v=>Math.max(-12,Math.min(12,+v||0)))}catch(e){}
 function initMicEq(){
   micEqBack=document.createElement('div');micEqBack.className='eqback';stage.appendChild(micEqBack);
-  const root=document.createElement('div');root.className='mid';micEqBack.appendChild(root);
+  const root=document.createElement('div');root.className='mid';micEqBack.appendChild(root);window.micEqRoot=root;
   const t=document.createElement('div');t.className='eqt';t.textContent='MIC EQ 12 BAND';root.appendChild(t);
   const cont=document.createElement('div');cont.className='mid';root.appendChild(cont);
-  const sets=[];
-  micOnB2=btn('MIC ON / OFF',-178,20,140,46,()=>toggleMic(),root);micOnB2.classList.toggle('on',micOn);
-  btn('RESET',-30,20,100,46,()=>sets.forEach(s=>s(.5)),root);
-  btn('BACK',78,20,100,46,()=>{micEqBack.style.display='none'},root);
+  let sets=[];
+  micOnB2=btn('MIC ON / OFF',-232,20,140,46,()=>toggleMic(),root);micOnB2.classList.toggle('on',micOn);
+  btn('RESET',-84,20,100,46,()=>sets.forEach(s=>s(.5)),root);
+  btn('BACK',24,20,100,46,()=>{micEqBack.style.display='none';micBack.style.display='block'},root);
+  btn('CLOSE',132,20,100,46,()=>{micEqBack.style.display='none';micBack.style.display='none'},root);
   const PREM=[['FLAT',[0,0,0,0,0,0,0,0,0,0,0,0]],['VOICE',[-8,-6,-3,0,1,2,3,3,1,0,-1,-2]],['SINGER',[-6,-4,-1,1,2,2,3,4,3,2,1,0]],
     ['RADIO',[-10,-8,-4,0,2,3,4,4,2,0,-2,-4]],['WARM',[3,3,2,1,0,0,-1,-2,-3,-4,-5,-6]],['BRIGHT',[-6,-4,-2,0,0,1,2,4,6,6,5,4]]];
   const pb=PREM.map(p=>btn(p[0],0,638,100,58,()=>p[1].forEach((db,k)=>sets[k](db/24+.5)),root));
-  const Wp=Math.max(600,W-48),sx=Wp/12,L0=-Wp/2,SY=126,SL=410;
-  t.style.left=L0+'px';
-  const z=document.createElement('div');z.className='eqz';z.style.left=L0+'px';z.style.width=Wp+'px';z.style.top=(SY+SL/2)+'px';cont.appendChild(z);
-  BANDS.forEach((f,k)=>{const x=(k-5.5)*sx;
-    const v=document.createElement('div');v.className='eqv';v.style.left=x+'px';v.textContent='0';cont.appendChild(v);
-    const fl=document.createElement('div');fl.className='lab';fl.style.cssText='left:'+x+'px;top:'+(SY+SL+14)+'px;font-size:15px';fl.textContent=BLBL[k];cont.appendChild(fl);
-    sets[k]=slider(x,SY,SL,true,MEQ[k]/24+.5,val=>{const db=(val-.5)*24;MEQ[k]=db;v.textContent=fmtDb(db);micApply();
-      try{localStorage.setItem(MEQK,JSON.stringify(MEQ.map(q=>Math.round(q*10)/10)))}catch(e){}},cont);
-    v.addEventListener('pointerdown',()=>sets[k](.5))});
-  const pw=(Wp-5*8)/6;pb.forEach((b,n)=>{b.style.left=(L0+n*(pw+8))+'px';b.style.width=pw+'px'});
+  function layout(){
+    const Wp=Math.max(600,W-48),sx=Wp/12,L0=-Wp/2,SY=126,SL=410;
+    t.style.left=L0+'px';cont.innerHTML='';sets=[];
+    const z=document.createElement('div');z.className='eqz';z.style.left=L0+'px';z.style.width=Wp+'px';z.style.top=(SY+SL/2)+'px';cont.appendChild(z);
+    BANDS.forEach((f,k)=>{const x=(k-5.5)*sx;
+      const v=document.createElement('div');v.className='eqv';v.style.left=x+'px';v.textContent=fmtDb(MEQ[k]);cont.appendChild(v);
+      const fl=document.createElement('div');fl.className='lab';fl.style.cssText='left:'+x+'px;top:'+(SY+SL+14)+'px;font-size:15px';fl.textContent=BLBL[k];cont.appendChild(fl);
+      sets[k]=slider(x,SY,SL,true,MEQ[k]/24+.5,val=>{const db=(val-.5)*24;MEQ[k]=db;v.textContent=fmtDb(db);micApply();
+        try{localStorage.setItem(MEQK,JSON.stringify(MEQ.map(q=>Math.round(q*10)/10)))}catch(e){}},cont);
+      v.addEventListener('pointerdown',()=>sets[k](.5))});
+    const pw=(Wp-5*8)/6;pb.forEach((b,n)=>{b.style.left=(L0+n*(pw+8))+'px';b.style.width=pw+'px'});
+  }
+  window.micEqLayout=layout;layout();fit();
 }
 const MICSVG='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>';
 const micBtn=btn('MIC',-50,508,100,40,()=>{micTm=setTimeout(()=>{micTm=null;openMic()},450)});
@@ -944,12 +948,12 @@ function openMic(){if(cueOpen)closeCue();micBack.style.display='block'}
 function closeMic(){micBack.style.display='none'}
 function initMic(){
   micBack=document.createElement('div');micBack.className='eqback';stage.appendChild(micBack);
-  micRoot=document.createElement('div');micRoot.className='mid';micRoot.style.top='46px';micBack.appendChild(micRoot);
+  micRoot=document.createElement('div');micRoot.className='mid';micRoot.style.top='46px';micBack.appendChild(micRoot);window.micRoot=micRoot;
   const T=(txt,l,t,cls)=>{const e=document.createElement('div');e.className=cls||'cl';e.textContent=txt;e.style.left=l+'px';e.style.top=t+'px';micRoot.appendChild(e);return e};
   T('MIC SETTINGS',-374,30,'eqt');
   micOnB=btn('MIC ON / OFF',-110,20,140,46,()=>toggleMic(),micRoot);micOnB.classList.toggle('on',micOn);
   btn('RESET',50,20,100,46,()=>{MS=Object.assign({},MS0,{dev:MS.dev});sync(true)},micRoot);
-  btn('CLOSE',274,20,100,46,closeMic,micRoot);btn('EQ 12-BAND',158,20,108,46,()=>{micEqBack.style.display='block'},micRoot);
+  btn('CLOSE',274,20,100,46,closeMic,micRoot);btn('EQ 12-BAND',158,20,108,46,()=>{micBack.style.display='none';micEqBack.style.display='block'},micRoot);
   const PR={
     VOICE:{aec:1,ns:1,agc:0,gate:1,lvl:.4,gth:.3,lc:.3,hc:.75,pres:.55,comp:.5,rev:0,duck:.35},
     SINGER:{aec:1,ns:0,agc:0,gate:0,lvl:.38,gth:.15,lc:.15,hc:.9,pres:.45,comp:.35,rev:.25,duck:.2},
