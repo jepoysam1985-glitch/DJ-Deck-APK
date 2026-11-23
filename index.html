@@ -787,7 +787,7 @@ async function djAnalyze(i,buf,t){
     if(r.bpm){try{const gf=fitGrid(r);if(gf){r.g=gf;if(gf.ok)bpmBase[i]=gf.bpm}}catch(e2){console.error(e2)}}
     r.intro=r.bpm?Math.max(0,r.intro-.05-beatSince(i,r.intro,1)):r.intro;
     flash(`Deck ${L[i]}: ${r.bpm?r.bpm+' BPM':'no BPM found (tap it)'} · ready`);
-    if(autoEq)computeAuto();updEqInfo();autoSyncCheck(i)}
+    if(autoEq)computeAuto();updEqInfo()}
   catch(err){console.error(err)}
 }
 
@@ -1042,10 +1042,6 @@ setInterval(()=>{if(!autoBM||amixBusy||bmRun)return;
 var quantizeOn=true;try{quantizeOn=localStorage.getItem('dj_quantize')!=='0'}catch(e){}
 function qTime(d,t){if(!quantizeOn||!info[d]||!bpmBase[d])return t;
   try{const per=60/bpmBase[d],ph=beatSince(d,t,1),q=ph<per/2?t-ph:t-ph+per,du=audios[d].duration;return Math.max(0,isFinite(du)?Math.min(du,q):q)}catch(e){return t}}
-
-// ===== AUTO SYNC: pag may BPM na ang dalawang deck, ang bagong load na deck ay kusang SYNC + SYNC LOCK sa kabila =====
-let autoSync=false; // naka-OFF na ang auto sync
-function autoSyncCheck(i){const o=1-i;if(!autoSync||!bpmBase[i]||!bpmBase[o]||syncOn[i]||syncOn[o])return;setLock(i,true)}
 
 
 // ===== AUTO EQ ON agad + LIVE: kusang gumagalaw ang EQ sliders at level habang tumutugtog =====
