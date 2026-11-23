@@ -948,12 +948,12 @@ const bmBtn=btn('BEAT MATCH',-50,256,100,40,()=>{autoBM=!autoBM;bmBtn.classList.
   if(autoBM){flash('BEAT MATCH: ON — auto beat-sync when both decks play');beatMatch()}
   else{[0,1].forEach(i=>{if(lockOn[i])setLock(i,false)});flash('BEAT MATCH: OFF')}});
 bmBtn.classList.add('on');
-const amBtn=btn('AUTOMIX\n'+amixLen+'s',-234,187,58,40,()=>{amBtn._h=false;clearTimeout(amBtn._t);
+const amBtn=btn('AUTOMIX\n'+amixLen+'s',-234,203,58,40,()=>{amBtn._h=false;clearTimeout(amBtn._t);
   amBtn._t=setTimeout(()=>{amBtn._h=true;const o=[6,10,16,24];amixLen=o[(o.indexOf(amixLen)+1)%4];amBtn.textContent='AUTOMIX\n'+amixLen+'s';flash('AUTOMIX: '+amixLen+' second transition')},500)});
 ['pointerup','pointercancel'].forEach(ev=>amBtn.addEventListener(ev,()=>{clearTimeout(amBtn._t);if(ev==='pointerup'&&!amBtn._h)setAutoMix(!autoMix)}));
 amBtn.style.fontSize='10px';amBtn.style.padding='0';amBtn.style.whiteSpace='pre-line';amBtn.style.lineHeight='1.15';
 const eqBtns=[0,1].map(d=>btn('EQ',58,240,72,40,()=>(eqOpen&&eqDeck===d)?closeEQ():openEQ(d),decks[d]));
-const aeBtn=btn('AUTO EQ',176,187,58,40,()=>setAutoEq(!autoEq));aeBtn.style.fontSize='10px';aeBtn.style.padding='0';
+const aeBtn=btn('AUTO EQ',176,203,58,40,()=>setAutoEq(!autoEq));aeBtn.style.fontSize='10px';aeBtn.style.padding='0';
 initEQ();
 setInterval(()=>{
   for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)).toFixed(1):'---';
