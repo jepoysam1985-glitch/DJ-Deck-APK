@@ -37,7 +37,7 @@ public class RecSavePlugin extends Plugin {
     String name = call.getString("name", "DJ-REC.mp3");
     String mime = call.getString("mime", "audio/mpeg");
     if (name == null || name.trim().isEmpty()) name = "DJ-REC.mp3";
-    name = name.replaceAll("[\\\\/:*?\"<>|]", "_");
+    name = name.replaceAll("[^A-Za-z0-9._ -]", "_");
     String rel = Build.VERSION.SDK_INT >= 31 ? "Recordings" : "Music/Recordings";
     try {
       ContentValues v = new ContentValues();
