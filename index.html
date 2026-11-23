@@ -1012,22 +1012,11 @@ const gdBtn=btn('BEATGRID',-50,510,100,40,()=>{gdBtn._h=false;clearTimeout(gdBtn
   gdBtn._t=setTimeout(()=>{gdBtn._h=true;const d=gridDeck();
     if(!info[d]||!bpmBase[d]){flash('BEATGRID: Deck '+L[d]+' has no BPM yet');return}
     gridMan[d]={t:smoothT(d),tok:tok[d]};gridOn=true;gdBtn.classList.add('on');try{localStorage.setItem('dj_grid','1')}catch(e){}
-    flash('BEATGRID: Deck '+L[d]+' — beat 1 set here (loads a new song = auto grid again)',4500);
-    if(bpmBase[1-d]&&info[1-d]&&!audios[0].paused&&!audios[1].paused)setTimeout(()=>alignNow(false),120)},500)});
+    flash('BEATGRID: Deck '+L[d]+' — beat 1 set here (loads a new song = auto grid again)',4500)},500)});
 ['pointerup','pointercancel'].forEach(ev=>gdBtn.addEventListener(ev,()=>{clearTimeout(gdBtn._t);
   if(ev==='pointerup'&&!gdBtn._h){gridOn=!gridOn;gdBtn.classList.toggle('on',gridOn);try{localStorage.setItem('dj_grid',gridOn?'1':'0')}catch(e){}
     flash(gridOn?'BEATGRID: ON — hold the button to set beat 1 at the playhead':'BEATGRID: OFF')}}));
 gdBtn.style.fontSize='11px';gdBtn.classList.toggle('on',gridOn);
-// ===== ALIGN BEAT: ihahanay ang beat ng kabilang deck sa master deck (para pantay ang beat lines sa A at B) =====
-// roles: kung may deck na naka-SYNC, siya ang susunod (slave); kung wala, ang mas malakas ang master. Para hindi mabago ang tempo ng tunay na master
-function syncRoles(){if(syncOn[0]!==syncOn[1]){const s=syncOn[0]?0:1;return[1-s,s]}const m=gridDeck();return[m,1-m]}
-function alignNow(say){const[m,s]=syncRoles();
-  if(!audios[0].src||!audios[1].src){if(say)flash('ALIGN BEAT: load both songs first');return}
-  if(!bpmBase[0]||!bpmBase[1]||!info[0]||!info[1]){if(say)flash('ALIGN BEAT: both decks need a BPM');return}
-  const T=applyTempoMatch(s,m,false);let d=0;
-  for(let n=0;n<2;n++){d=alignBeat(s,m,T.mu);if(Math.abs(d)<.012)break}
-  if(say)flash('ALIGN BEAT: Deck '+L[s]+' → '+L[m]+' ('+Math.round(d*1000)+' ms)')}
-const alBtn=btn('ALIGN',-50,556,100,34,()=>alignNow(true));alBtn.style.fontSize='11px';
 initEQ();
 setInterval(()=>{
   for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)).toFixed(1):'---';
