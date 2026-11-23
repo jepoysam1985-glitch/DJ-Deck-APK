@@ -446,7 +446,7 @@ function tapUp(i){clearTimeout(tapPt[i])}
   const b=document.createElement('div');b.className='bpm';b.style.left=x+'px';b.style.top='135px';
   b.innerHTML='<span>---</span><small>BPM</small>';midEl.appendChild(b);if(i){b.style.color='var(--bc)';b.style.textShadow='0 0 8px var(--bc)';b.style.borderColor='var(--bcd)'}
   // mas maliit ang BPM box para magkasya ang TAP button sa tabi nito
-  b.style.left=(i?120:-120)+'px';b.style.width='100px';b.style.marginLeft='-50px';b.style.fontSize='20px';
+  b.style.left=(i?128:-128)+'px';b.style.width='88px';b.style.marginLeft='-44px';b.style.fontSize='17px';b.style.gap='4px';b.style.padding='0';
   bpmSp[i]=b.firstChild;b.addEventListener('pointerdown',()=>tapDown(i));b.addEventListener('pointerup',()=>tapUp(i));b.addEventListener('pointercancel',()=>tapUp(i));
 });
 applyGain();
@@ -641,7 +641,7 @@ const btn=(txt,l,t,w,h,cb,par)=>{const e=document.createElement('div');e.classNa
   if(par&&par===decks[1])t+=(cfg[0].cy-cfg[1].cy)/1.18; // Deck B: pareho ang pwesto ng Deck A
   e.style.cssText=`left:${l}px;top:${t}px;width:${w}px;height:${h}px`;
   e.addEventListener('pointerdown',ev=>{ev.stopPropagation();cb(ev)});(par||midEl).appendChild(e);return e};
-const tapB=[0,1].map(i=>{const b=btn('TAP',i?40:-86,135,46,46,()=>{tapDown(i);b.classList.add('on')},midEl);b.style.fontSize='13px';['pointerup','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>{tapUp(i);b.classList.remove('on')}));return b});
+const tapB=[0,1].map(i=>{const b=btn('TAP',i?32:-78,135,46,46,()=>{tapDown(i);b.classList.add('on')},midEl);b.style.fontSize='13px';['pointerup','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>{tapUp(i);b.classList.remove('on')}));return b});
 // ===== VINYL icon (SKIN) at WAVE icon (waveform style) sa taas, kasunod ng TEMPO =====
 // ===== SKINS: kumpletong disenyo ng deck (vinyl platter + ring), hindi lang kulay =====
 const gv=(a,b)=>`repeating-radial-gradient(circle,${a} 0 1.5px,${b} 1.5px 3px)`;
@@ -1808,7 +1808,7 @@ const css=document.createElement('style');css.textContent='.onair{background:#d4
 let lp=null;const loadLame=()=>window.lamejs?Promise.resolve(true):(lp=lp||new Promise(r=>{const tryS=(src,fail)=>{const x=document.createElement('script');x.src=src;x.onload=()=>r(!!window.lamejs);x.onerror=fail;document.head.appendChild(x)};tryS('lame.min.js',()=>tryS('https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',()=>{lp=null;r(false)}));setTimeout(()=>r(!!window.lamejs),8000)}));
 loadLame();
 let rec=null,onAir=false;
-const recB=btn('● REC',-32,135,64,46,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
+const recB=btn('● REC',-28,135,56,46,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
 recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';recB.style.fontSize='13px';recB.style.lineHeight='1.1';
 let air=null;
 // ---- NOW PLAYING -> server metadata (title na lalabas sa website) ----
