@@ -1339,14 +1339,24 @@ function setBpm(k,v){lib.bpm[k]=v;LS('djlib_bpm',lib.bpm);(lib.bd.get(k)||[]).fo
 window.libBpm=(i,b)=>{const k=lib.dk[i];if(k)setBpm(k,b)};
 window.libClearCache=()=>{lib.bpm={};LS('djlib_bpm',lib.bpm);cov.forEach(u=>{try{u&&u.startsWith&&u.startsWith('blob:')&&URL.revokeObjectURL(u)}catch(e){}});cov.clear();lib.bd.forEach((es,k)=>es.forEach(e=>setBp(e,k)))};
 let stopB=true,sbtn=null;
-async function bpmScan(){if(!stopB){stopB=true;return}
-  const todo=lib.tracks.filter(t=>!lib.bpm[t.key]&&t.src);if(!todo.length)return msg('BPM already known for all songs',3000);
-  stopB=false;sbtn&&(sbtn.textContent='■ STOP BPM');let n=0;const oc=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,1,44100);
+// AUTO BPM SCAN: kusang nag-i-scan ng BPM ng mga kantang wala pang BPM, habang walang tumutugtog na deck (para hindi mag-lag)
+let autoBpm=true;try{autoBpm=localStorage.getItem('dj_autobpm')!=='0'}catch(e){}
+let bpmAutoNext=false,bpmAutoActive=false,bpmUserStop=false;const bpmTry=new Set();
+const decksPlay=()=>{try{return !audios[0].paused||!audios[1].paused}catch(e){return false}};
+async function bpmScan(){const au=bpmAutoNext;bpmAutoNext=false;if(!stopB){stopB=true;if(!au)bpmUserStop=true;return}
+  if(!au)bpmUserStop=false;
+  const todo=lib.tracks.filter(t=>!lib.bpm[t.key]&&t.src&&(!au||!bpmTry.has(t.key)));if(!todo.length)return au?0:msg('BPM already known for all songs',3000);
+  stopB=false;bpmAutoActive=au;sbtn&&(sbtn.textContent='■ STOP BPM');let n=0;const oc=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,1,44100);
   for(const t of todo){if(stopB)break;
+    if(au)while(!stopB&&decksPlay())await new Promise(r=>setTimeout(r,1500));
+    if(stopB)break;bpmTry.add(t.key);
     try{const f=t.src.getFile?await t.src.getFile():t.src,buf=await oc.decodeAudioData(await f.arrayBuffer()),d=buf.getChannelData(0),sr=buf.sampleRate,len=Math.min(d.length,75*sr),st=Math.floor((d.length-len)/2);
       const r=await analyzeCore(d.subarray(st,st+len),sr,()=>!stopB);if(r&&r.bpm)setBpm(t.key,r.bpm)}catch(e){}
     n++;msg('BPM scan '+n+'/'+todo.length+' · '+t.name)}
-  stopB=true;sbtn&&(sbtn.textContent='BPM SCAN');msg('BPM scan finished',3000)}
+  stopB=true;bpmAutoActive=false;sbtn&&(sbtn.textContent='BPM SCAN');msg('BPM scan finished',3000)}
+function autoBpmRun(){if(!autoBpm||!stopB||bpmUserStop||document.hidden||lib.scanning||lib.mscan||lib.nscan||decksPlay())return;
+  if(!lib.tracks.some(t=>t.src&&!lib.bpm[t.key]&&!bpmTry.has(t.key)))return;bpmAutoNext=true;bpmScan()}
+setInterval(autoBpmRun,6000);setTimeout(autoBpmRun,4000);
 function setTracks(a){const m=new Map();a.forEach(t=>m.set(t.key,t));lib.tracks=[...m.values()].sort((x,y)=>col.compare(x.name,y.name));lib.map=new Map(lib.tracks.map(t=>[t.key,t]))}
 const mk=(key,n,folder,src,par)=>({key,name:n.replace(/\.[^.]+$/,''),folder,src,par});
 // ---- scan ----
@@ -1482,7 +1492,10 @@ function render(){
   if(lib.need)act.append(lbtn('ALLOW FOLDER',()=>scanAll(true),'sm on'));
   else if((lib.dirs.length||lib.nd.length||(natF()&&lib.auto))&&T==='music')act.append(lbtn('⟳ SCAN',()=>{scanAll(true);if(lib.nd.length)nscan();else mscan()},'sm'));
   if(natF()&&T==='music')act.append(lbtn('AUTO SCAN: '+(lib.auto?'ON':'OFF'),()=>{lib.auto=!lib.auto;LS('djlib_auto',lib.auto);if(lib.auto)mscan();else{setTracks(lib.tracks.filter(t=>!t.med));msg('Auto scan OFF',2500)}render()},'sm'+(lib.auto?' on':'')));
-  if(T==='music'){sbtn=lbtn(stopB?'BPM SCAN':'■ STOP BPM',bpmScan,'sm');act.append(sbtn);act.append(lbtn('☑ SELECT ALL → PLAYLIST',()=>pickMany(lib.tracks),'sm on'));const e=fill(lib.tracks,t=>trow(t),'No songs yet.\nAUTO SCAN is looking for the music on your phone. If nothing shows up, tap ⟳ SCAN and allow access to your music.'+(window.showDirectoryPicker||natF()?'':'\n(This browser cannot auto-scan; the selected songs will not be remembered after closing.)'));if(e)e.style.whiteSpace='pre-line'}
+  if(T==='music'){sbtn=lbtn(stopB?'BPM SCAN':'■ STOP BPM',bpmScan,'sm');act.append(sbtn);{const ab=lbtn(autoBpm?'AUTO BPM: ON':'AUTO BPM: OFF',()=>{autoBpm=!autoBpm;try{localStorage.setItem('dj_autobpm',autoBpm?'1':'0')}catch(e){}
+    ab.textContent=autoBpm?'AUTO BPM: ON':'AUTO BPM: OFF';ab.classList.toggle('on',autoBpm);
+    if(autoBpm){bpmUserStop=false;autoBpmRun()}else if(!stopB&&bpmAutoActive)stopB=true},'sm'+(autoBpm?' on':''));act.append(ab)}
+    act.append(lbtn('☑ SELECT ALL → PLAYLIST',()=>pickMany(lib.tracks),'sm on'));const e=fill(lib.tracks,t=>trow(t),'No songs yet.\nAUTO SCAN is looking for the music on your phone. If nothing shows up, tap ⟳ SCAN and allow access to your music.'+(window.showDirectoryPicker||natF()?'':'\n(This browser cannot auto-scan; the selected songs will not be remembered after closing.)'));if(e)e.style.whiteSpace='pre-line'}
   else if(T==='playlist'){
     if(!S){info=lib.pl.length+' playlist';act.append(lbtn('＋ NEW PLAYLIST',()=>{lib.sub={id:newPl().id};render()},'sm'));
       fill(lib.pl,p=>grow('♪ '+p.name,p.items.length+' songs',()=>{lib.sub={id:p.id};render()}),'No playlists yet.\nTap ＋ on a song you want to add.')}
