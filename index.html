@@ -640,7 +640,7 @@ const btn=(txt,l,t,w,h,cb,par)=>{const e=document.createElement('div');e.classNa
   if(par&&par===decks[1])t+=(cfg[0].cy-cfg[1].cy)/1.18; // Deck B: pareho ang pwesto ng Deck A
   e.style.cssText=`left:${l}px;top:${t}px;width:${w}px;height:${h}px`;
   e.addEventListener('pointerdown',ev=>{ev.stopPropagation();cb(ev)});(par||midEl).appendChild(e);return e};
-const tapB=[0,1].map(i=>{const b=btn('TAP',i?20:-66,135,46,46,()=>{tapDown(i);b.classList.add('on')},midEl);b.style.fontSize='13px';['pointerup','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>{tapUp(i);b.classList.remove('on')}));return b});
+const tapB=[0,1].map(i=>{const b=btn('TAP',i?40:-86,135,46,46,()=>{tapDown(i);b.classList.add('on')},midEl);b.style.fontSize='13px';['pointerup','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>{tapUp(i);b.classList.remove('on')}));return b});
 // ===== VINYL icon (SKIN) at WAVE icon (waveform style) sa taas, kasunod ng TEMPO =====
 // ===== SKINS: kumpletong disenyo ng deck (vinyl platter + ring), hindi lang kulay =====
 const gv=(a,b)=>`repeating-radial-gradient(circle,${a} 0 1.5px,${b} 1.5px 3px)`;
@@ -1776,8 +1776,8 @@ const css=document.createElement('style');css.textContent='.onair{background:#d4
 let lp=null;const loadLame=()=>window.lamejs?Promise.resolve(true):(lp=lp||new Promise(r=>{const tryS=(src,fail)=>{const x=document.createElement('script');x.src=src;x.onload=()=>r(!!window.lamejs);x.onerror=fail;document.head.appendChild(x)};tryS('lame.min.js',()=>tryS('https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',()=>{lp=null;r(false)}));setTimeout(()=>r(!!window.lamejs),8000)}));
 loadLame();
 let rec=null,onAir=false;
-const recB=btn('● REC',-18,135,36,46,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
-recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';recB.style.fontSize='10px';recB.style.lineHeight='1.1';
+const recB=btn('● REC',-32,135,64,46,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
+recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';recB.style.fontSize='13px';recB.style.lineHeight='1.1';
 let air=null;
 // ---- NOW PLAYING -> server metadata (title na lalabas sa website) ----
 let nowI=-1,nowLast='',nowLastT='';
@@ -1858,21 +1858,25 @@ async function save(blob,name){
   const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000)}
 async function toggleRec(){
   if(rec)return stopRec();
-  if(!ctx||!master){flash('REC: load a song first');return}
+  if(!ctx||!master){try{ensureCtx(0)}catch(e){}}
+  if(!ctx||!master){flash('REC: could not start audio — tap a deck or load a song first');return}
+  try{if(ctx.state!=='running')await ctx.resume()}catch(e){}
   recB.textContent='...';const ok=await loadLame(),sr=ctx.sampleRate,enc=ok?new lamejs.Mp3Encoder(2,sr,128):null;
-  const sp=ctx.createScriptProcessor(4096,2,2),mute=ctx.createGain(),parts=[];mute.gain.value=0;
+  let sp,mute,parts=[];
+  try{sp=ctx.createScriptProcessor(4096,2,2);mute=ctx.createGain();mute.gain.value=0}catch(err){recB.textContent='● REC';flash('REC failed: '+(err&&err.message||err));return}
   sp.onaudioprocess=e=>{const A=e.inputBuffer.getChannelData(0),B=e.inputBuffer.getChannelData(1),n=A.length,l=new Int16Array(n),r=new Int16Array(n);
     for(let i=0;i<n;i++){l[i]=Math.max(-1,Math.min(1,A[i]))*32767;r[i]=Math.max(-1,Math.min(1,B[i]))*32767}
     if(enc){const b=enc.encodeBuffer(l,r);if(b.length)parts.push(b)}else parts.push(l,r)};
-  master.connect(sp);sp.connect(mute);mute.connect(ctx.destination);
+  try{master.connect(sp);sp.connect(mute);mute.connect(ctx.destination)}catch(err){recB.textContent='● REC';flash('REC failed: '+(err&&err.message||err));return}
   rec={sp,mute,enc,parts,sr,t0:performance.now()};recB.classList.add('on');
   flash(ok?'REC (MP3 128 kbps) — recording':'REC — no internet for the MP3 encoder, recording WAV for now')}
 async function stopRec(){
-  const r=rec;rec=null;try{master.disconnect(r.sp)}catch(e){}try{r.sp.disconnect();r.mute.disconnect()}catch(e){}r.sp.onaudioprocess=null;
+  const r=rec;rec=null;if(!r)return;try{master.disconnect(r.sp)}catch(e){}try{r.sp.disconnect();r.mute.disconnect()}catch(e){}r.sp.onaudioprocess=null;
   let blob,ext;if(r.enc){const b=r.enc.flush();if(b.length)r.parts.push(b);blob=new Blob(r.parts,{type:'audio/mpeg'});ext='mp3'}else{blob=wav(r.parts,r.sr);ext='wav'}
   recB.classList.remove('on');recB.textContent='● REC';const d=new Date(),z=x=>String(x).padStart(2,'0');
   const name='DJ-REC-'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'-'+z(d.getHours())+z(d.getMinutes())+z(d.getSeconds())+'.'+ext;
-  flash('REC done — '+(blob.size/1048576).toFixed(1)+' MB · '+name);await save(blob,name)}
+  if(!blob.size){flash('REC: nothing was recorded — play a song and try again');return}
+  flash('REC done — '+(blob.size/1048576).toFixed(1)+' MB · '+name);try{await save(blob,name)}catch(err){flash('REC save failed: '+(err&&err.message||err))}}
 setInterval(()=>{if(!rec)return;const t=Math.floor((performance.now()-rec.t0)/1000);recB.textContent='● '+String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')},500);
 window.__recTest={start:()=>toggleRec(),stop:()=>toggleRec()};
 })();
