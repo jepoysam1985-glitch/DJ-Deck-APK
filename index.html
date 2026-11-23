@@ -1307,7 +1307,7 @@ async function nscan(){const N=natF();if(!N||!lib.nd.length||lib.nscan)return;li
   try{for(const d of lib.nd){
       try{msg('Scanning '+d.name+'…');const r=await N.list({uri:d.uri});ok++;
         (r.files||[]).forEach(f=>{const key=d.name+'/'+f.path,i=key.lastIndexOf('/'),t=mk(key,f.name,key.slice(0,i),nsrc(f),null);t.nat=1;t.sz=f.size;fresh.push(t)})}
-      catch(e){bad++;msg('Cannot read folder '+d.name+': '+((e&&e.message)||e)+' — tap ＋ FOLDER again',7000)}}
+      catch(e){bad++;msg('Cannot read folder '+d.name+': '+((e&&e.message)||e)+' — tap ⟳ SCAN',7000)}}
     if(ok)setTracks([...lib.tracks.filter(t=>!t.nat||t.med),...fresh]);
     lib.last=Date.now();if(ok&&!bad)msg('Scan finished: '+lib.tracks.length+' songs',3500)}
   catch(e){msg('Scan error: '+((e&&e.message)||e),5000)}
@@ -1412,7 +1412,7 @@ function render(){
   if(lib.need)act.append(lbtn('ALLOW FOLDER',()=>scanAll(true),'sm on'));
   else if((lib.dirs.length||lib.nd.length||(natF()&&lib.auto))&&T==='music')act.append(lbtn('⟳ SCAN',()=>{scanAll(true);if(lib.nd.length)nscan();else mscan()},'sm'));
   if(natF()&&T==='music')act.append(lbtn('AUTO SCAN: '+(lib.auto?'ON':'OFF'),()=>{lib.auto=!lib.auto;LS('djlib_auto',lib.auto);if(lib.auto)mscan();else{setTracks(lib.tracks.filter(t=>!t.med));msg('Auto scan OFF',2500)}render()},'sm'+(lib.auto?' on':'')));
-  if(T==='music'){sbtn=lbtn(stopB?'BPM SCAN':'■ STOP BPM',bpmScan,'sm');act.append(sbtn);act.append(lbtn('☑ SELECT ALL → PLAYLIST',()=>pickMany(lib.tracks),'sm on'));const e=fill(lib.tracks,t=>trow(t),'No songs yet.\nTap ＋ FOLDER and choose the Music folder on your phone. Just once — after that it is read automatically every time you open the app.'+(window.showDirectoryPicker||natF()?'':'\n(This browser cannot auto-scan; the selected songs will not be remembered after closing.)'));if(e)e.style.whiteSpace='pre-line'}
+  if(T==='music'){sbtn=lbtn(stopB?'BPM SCAN':'■ STOP BPM',bpmScan,'sm');act.append(sbtn);act.append(lbtn('☑ SELECT ALL → PLAYLIST',()=>pickMany(lib.tracks),'sm on'));const e=fill(lib.tracks,t=>trow(t),'No songs yet.\nAUTO SCAN is looking for the music on your phone. If nothing shows up, tap ⟳ SCAN and allow access to your music.'+(window.showDirectoryPicker||natF()?'':'\n(This browser cannot auto-scan; the selected songs will not be remembered after closing.)'));if(e)e.style.whiteSpace='pre-line'}
   else if(T==='playlist'){
     if(!S){info=lib.pl.length+' playlist';act.append(lbtn('＋ NEW PLAYLIST',()=>{lib.sub={id:newPl().id};render()},'sm'));
       fill(lib.pl,p=>grow('♪ '+p.name,p.items.length+' songs',()=>{lib.sub={id:p.id};render()}),'No playlists yet.\nTap ＋ on a song you want to add.')}
@@ -1425,14 +1425,13 @@ function render(){
       const nm=(P?t.folder.slice(pre.length):t.folder).split('/')[0];ch.set(nm,(ch.get(nm)||0)+1)});
     info=(P?'📁 '+P+' · ':'')+ch.size+' folder · '+own.length+' songs';
     if(P)act.append(lbtn('‹ BACK',()=>{const i=P.lastIndexOf('/');lib.sub=i>0?{f:P.slice(0,i)}:null;render()},'sm'),lbtn('☑ SELECT ALL → PLAYLIST',()=>pickMany(lib.tracks.filter(t=>t.folder===P||t.folder.startsWith(P+'/'))),'sm on'));
-    act.append(lbtn('＋ FOLDER',pickDir,'sm'));
-    fill([...ch.keys()].sort(col.compare).map(n=>({d:n,c:ch.get(n)})).concat(own),r=>r.d?grow('📁 '+r.d,r.c+' songs',()=>{lib.sub={f:pre+r.d};render()},()=>delFolder(pre+r.d)):trow(r,{sub:' '}),'No folders yet.\nTap ＋ FOLDER and choose your Music folder — all folders inside it will appear here.')}
+    fill([...ch.keys()].sort(col.compare).map(n=>({d:n,c:ch.get(n)})).concat(own),r=>r.d?grow('📁 '+r.d,r.c+' songs',()=>{lib.sub={f:pre+r.d};render()},()=>delFolder(pre+r.d)):trow(r,{sub:' '}),'No folders yet.\nAUTO SCAN will list the folders that contain your music here.')}
   else{info=lib.hist.length+' loaded';if(lib.hist.length)act.append(armed('CLEAR HISTORY',()=>{lib.hist=[];LS('djlib_hist',[]);render()}));
     fill(lib.hist,h=>trow(stub(h.k,h.n),{nodel:1,sub:'Deck '+L[h.d]+' · '+fmtD(h.t)}),'No history yet. Songs you load will appear here.')}
   lib.info=info;if(!lib.msg)stat.textContent=info}
 const t0=el('div','lt');t0.innerHTML=ICON+'<span>MUSIC</span>';hd.appendChild(t0);
 const tabs=[['music','MUSIC'],['playlist','PLAYLIST'],['folders','FOLDERS'],['history','HISTORY']].map(([k,x])=>[k,lbtn(x,()=>{lib.tab=k;lib.sub=null;render()})]);
-tabs.forEach(t=>hd.append(t[1]));hd.append(el('div','lsp'),lbtn('＋ FOLDER',pickDir,'sm'),lbtn('＋ FILES',()=>fi.click(),'sm'),lbtn('CLOSE',()=>{open=false;back.style.display='none'},'sm'));
+tabs.forEach(t=>hd.append(t[1]));hd.append(el('div','lsp'),lbtn('CLOSE',()=>{open=false;back.style.display='none'},'sm'));
 function openLib(){if(eqOpen)closeEQ();if(cueOpen)closeCue();open=true;back.style.display='block';render();
   if(lib.dirs.length&&(lib.need||!lib.tracks.length||Date.now()-lib.last>30000))scanAll(true);
   if(lib.nd.length&&(!lib.tracks.length||Date.now()-lib.last>30000))nscan();else if(natF()&&(!lib.tracks.length||Date.now()-lib.last>30000))mscan(true)}
