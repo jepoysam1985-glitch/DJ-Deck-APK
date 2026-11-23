@@ -1293,7 +1293,7 @@ async function scanAll(ask){if(lib.scanning||!lib.dirs.length)return;lib.scannin
   lib.scanning=false;if(open)render()}
 // ---- ANDROID APK: native folder picker (walang showDirectoryPicker sa WebView) ----
 const natF=()=>{const C=window.Capacitor;return(C&&C.Plugins&&C.Plugins.FolderPicker)||null};
-lib.nd=LS('djlib_nd')||[];lib.nscan=false;
+lib.nd=LS('djlib_nd')||[];lib.nscan=false;lib.mscan=false;lib.auto=LS('djlib_auto');if(lib.auto===null||lib.auto===undefined)lib.auto=true;
 const MIMES={mp3:'audio/mpeg',m4a:'audio/mp4',aac:'audio/aac',wav:'audio/wav',flac:'audio/flac',ogg:'audio/ogg',oga:'audio/ogg',opus:'audio/ogg',wma:'audio/x-ms-wma',amr:'audio/amr',weba:'audio/webm'};
 async function nread(uri,a,z){const N=natF(),n=Math.max(0,z-a),out=new Uint8Array(n);let p=0;
   while(p<n){const r=await N.read({uri,offset:a+p,length:Math.min(1048576,n-p)});if(!r||!r.data)break;const s=atob(r.data);if(!s.length)break;for(let i=0;i<s.length;i++)out[p+i]=s.charCodeAt(i);p+=s.length}
@@ -1306,12 +1306,23 @@ function nsrc(e){const ty=MIMES[(e.name.split('.').pop()||'').toLowerCase()]||'a
 async function nscan(){const N=natF();if(!N||!lib.nd.length||lib.nscan)return;lib.nscan=true;lib.scanning=true;const fresh=[];let ok=0,bad=0;
   try{for(const d of lib.nd){
       try{msg('Scanning '+d.name+'…');const r=await N.list({uri:d.uri});ok++;
-        (r.files||[]).forEach(f=>{const key=d.name+'/'+f.path,i=key.lastIndexOf('/'),t=mk(key,f.name,key.slice(0,i),nsrc(f),null);t.nat=1;fresh.push(t)})}
+        (r.files||[]).forEach(f=>{const key=d.name+'/'+f.path,i=key.lastIndexOf('/'),t=mk(key,f.name,key.slice(0,i),nsrc(f),null);t.nat=1;t.sz=f.size;fresh.push(t)})}
       catch(e){bad++;msg('Cannot read folder '+d.name+': '+((e&&e.message)||e)+' — tap ＋ FOLDER again',7000)}}
-    if(ok)setTracks([...lib.tracks.filter(t=>!t.nat),...fresh]);
+    if(ok)setTracks([...lib.tracks.filter(t=>!t.nat||t.med),...fresh]);
     lib.last=Date.now();if(ok&&!bad)msg('Scan finished: '+lib.tracks.length+' songs',3500)}
   catch(e){msg('Scan error: '+((e&&e.message)||e),5000)}
-  lib.nscan=false;lib.scanning=false;if(open)render()}
+  lib.nscan=false;lib.scanning=false;if(lib.auto)await mscan(true);if(open)render()}
+// ---- AUTO SCAN: MediaStore (lahat ng music sa phone, kusa, walang pick ng folder) ----
+async function mscan(quiet){const N=natF();if(!N||!N.scanMedia||!lib.auto||lib.mscan)return;lib.mscan=true;
+  try{const r=await N.scanMedia(),nd=new Set(lib.tracks.filter(t=>t.nat&&!t.med).map(t=>t.name+'|'+(t.sz||0))),fresh=[];
+    (r.files||[]).forEach(f=>{if(nd.has(f.name+'|'+(f.size||0)))return;const key='Phone/'+(f.path||f.name),i=key.lastIndexOf('/'),t=mk(key,f.name,key.slice(0,i),nsrc(f),null);t.nat=1;t.med=1;t.sz=f.size;fresh.push(t)});
+    const before=lib.tracks.filter(t=>t.med).length;setTracks([...lib.tracks.filter(t=>!t.med),...fresh]);lib.last=Date.now();
+    const add=fresh.length-before;
+    if(!quiet)msg('Auto scan: '+fresh.length+' songs',3500);else if(before&&add>0)msg(add+' new songs found',4000)}
+  catch(e){const m=String((e&&e.message)||e);
+    if(/denied/i.test(m)){lib.auto=false;LS('djlib_auto',false);msg('Auto scan OFF: walang permission sa music — allow sa Android settings',7000)}
+    else if(!quiet)msg('Auto scan error: '+m,5000)}
+  lib.mscan=false;if(open)render()}
 async function nPick(){const N=natF();
   try{const r=await N.pick();if(!r||!r.uri)return;
     if(!lib.nd.some(d=>d.uri===r.uri)){lib.nd.push({uri:r.uri,name:r.name||'Music'});LS('djlib_nd',lib.nd)}
@@ -1399,7 +1410,8 @@ function render(){
   const T=lib.tab,S=lib.sub,n=lib.tracks.length;let info=n+' songs';
   const back2=()=>act.append(lbtn('‹ BACK',()=>{lib.sub=null;render()},'sm'));
   if(lib.need)act.append(lbtn('ALLOW FOLDER',()=>scanAll(true),'sm on'));
-  else if((lib.dirs.length||lib.nd.length)&&T==='music')act.append(lbtn('⟳ SCAN',()=>{scanAll(true);nscan()},'sm'));
+  else if((lib.dirs.length||lib.nd.length||(natF()&&lib.auto))&&T==='music')act.append(lbtn('⟳ SCAN',()=>{scanAll(true);if(lib.nd.length)nscan();else mscan()},'sm'));
+  if(natF()&&T==='music')act.append(lbtn('AUTO SCAN: '+(lib.auto?'ON':'OFF'),()=>{lib.auto=!lib.auto;LS('djlib_auto',lib.auto);if(lib.auto)mscan();else{setTracks(lib.tracks.filter(t=>!t.med));msg('Auto scan OFF',2500)}render()},'sm'+(lib.auto?' on':'')));
   if(T==='music'){sbtn=lbtn(stopB?'BPM SCAN':'■ STOP BPM',bpmScan,'sm');act.append(sbtn);act.append(lbtn('☑ SELECT ALL → PLAYLIST',()=>pickMany(lib.tracks),'sm on'));const e=fill(lib.tracks,t=>trow(t),'No songs yet.\nTap ＋ FOLDER and choose the Music folder on your phone. Just once — after that it is read automatically every time you open the app.'+(window.showDirectoryPicker||natF()?'':'\n(This browser cannot auto-scan; the selected songs will not be remembered after closing.)'));if(e)e.style.whiteSpace='pre-line'}
   else if(T==='playlist'){
     if(!S){info=lib.pl.length+' playlist';act.append(lbtn('＋ NEW PLAYLIST',()=>{lib.sub={id:newPl().id};render()},'sm'));
@@ -1423,11 +1435,13 @@ const tabs=[['music','MUSIC'],['playlist','PLAYLIST'],['folders','FOLDERS'],['hi
 tabs.forEach(t=>hd.append(t[1]));hd.append(el('div','lsp'),lbtn('＋ FOLDER',pickDir,'sm'),lbtn('＋ FILES',()=>fi.click(),'sm'),lbtn('CLOSE',()=>{open=false;back.style.display='none'},'sm'));
 function openLib(){if(eqOpen)closeEQ();if(cueOpen)closeCue();open=true;back.style.display='block';render();
   if(lib.dirs.length&&(lib.need||!lib.tracks.length||Date.now()-lib.last>30000))scanAll(true);
-  if(lib.nd.length&&(!lib.tracks.length||Date.now()-lib.last>30000))nscan()}
+  if(lib.nd.length&&(!lib.tracks.length||Date.now()-lib.last>30000))nscan();else if(natF()&&(!lib.tracks.length||Date.now()-lib.last>30000))mscan(true)}
 const mb=btn('',-50,356,100,42,()=>{});mb.style.flexDirection='column';mb.style.gap='1px';
 mb.innerHTML=ICON+'<span style="font-size:11px;letter-spacing:.5px">MUSIC</span>';mb.addEventListener('click',openLib);
 idbGet('dirs').then(d=>{if(d&&d.length){lib.dirs=d;scanAll(false).then(()=>{if(open)render()})}});
-setTimeout(()=>{if(natF()&&lib.nd.length)nscan()},700);
+setTimeout(()=>{if(natF()){if(lib.nd.length)nscan();else mscan(true)}},700);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&natF()&&lib.auto&&Date.now()-lib.last>20000){if(lib.nd.length)nscan();else mscan(true)}});
+setInterval(()=>{if(!document.hidden&&natF()&&lib.auto&&!lib.scanning&&!lib.mscan&&Date.now()-lib.last>60000)mscan(true)},30000);
 })();
 
 // ===== SETTINGS (icon) — nandito ang LATENCY =====
