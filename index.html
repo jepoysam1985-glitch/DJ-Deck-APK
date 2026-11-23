@@ -834,10 +834,10 @@ async function smartFade(){
       xfSet(to);idleMsg=''}
   }catch(err){console.error(err)}
   finally{sfBusy=false;sfAbort=false;sfBtn.classList.remove('on')}}
-const sfBtn=btn('SMART FADE\n'+sfLen+'s',-50,662,100,40,()=>{sfBtn._h=false;clearTimeout(sfBtn._t);
+const sfBtn=btn('SMART FADE\n'+sfLen+'s',-240,251,70,40,()=>{sfBtn._h=false;clearTimeout(sfBtn._t);
   sfBtn._t=setTimeout(()=>{sfBtn._h=true;const o=[4,8,16,24];sfLen=o[(o.indexOf(sfLen)+1)%4];sfBtn.textContent='SMART FADE\n'+sfLen+'s';flash('SMART FADE: '+sfLen+' second fade')},500)});
 ['pointerup','pointercancel'].forEach(ev=>sfBtn.addEventListener(ev,()=>{clearTimeout(sfBtn._t);if(ev==='pointerup'&&!sfBtn._h)smartFade()}));
-sfBtn.style.fontSize='11px';sfBtn.style.padding='0';sfBtn.style.whiteSpace='pre-line';sfBtn.style.lineHeight='1.15';
+sfBtn.style.fontSize='10px';sfBtn.style.padding='0';sfBtn.style.whiteSpace='pre-line';sfBtn.style.lineHeight='1.15';
 const eqBtns=[0,1].map(d=>btn('EQ',58,240,72,40,()=>(eqOpen&&eqDeck===d)?closeEQ():openEQ(d),decks[d]));
 const aeBtn=btn('AUTO EQ',176,203,58,40,()=>setAutoEq(!autoEq));aeBtn.style.fontSize='10px';aeBtn.style.padding='0';
 // ===== BEATGRID: beat lines on the waveform (bold line = beat 1 of each bar) =====
