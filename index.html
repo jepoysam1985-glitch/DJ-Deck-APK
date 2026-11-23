@@ -800,8 +800,8 @@ function amixCheck(){
   if(rem<=amixLen+2.4){if(!info[y]&&amixLoadT[y]&&performance.now()-amixLoadT[y]<15000)return;startAutomix(x,y)}}
 
 // ---- buttons sa gitna ----
-const syncBtn=[0,1].map(d=>{const b=btn('SYNC '+L[d],58,170,72,40,()=>setSync(d,!syncOn[d]),decks[d]);b.style.fontSize='11px';return b});
-[0,1].forEach(d=>{const k=btn('SYNC LOCK',-24,170,72,40,()=>setLock(d,!lockOn[d]),decks[d]),f=btn('FADE OUT\n'+fadeLen+'s',-24,240,72,40,()=>{f._h=false;clearTimeout(f._t);f._t=setTimeout(()=>{f._h=true;const o=[2,4,8,16];fadeLen=o[(o.indexOf(fadeLen)+1)%4];fdBtn.forEach(x=>x.textContent='FADE OUT\n'+fadeLen+'s');flash('FADE OUT: '+fadeLen+' second fade')},500)},decks[d]);
+const syncBtn=[0,1].map(d=>{const b=btn('SYNC '+L[d],36,190,72,40,()=>setSync(d,!syncOn[d]),decks[d]);b.style.fontSize='11px';return b});
+[0,1].forEach(d=>{const k=btn('SYNC LOCK',-60,190,72,40,()=>setLock(d,!lockOn[d]),decks[d]),f=btn('FADE OUT\n'+fadeLen+'s',-60,260,72,40,()=>{f._h=false;clearTimeout(f._t);f._t=setTimeout(()=>{f._h=true;const o=[2,4,8,16];fadeLen=o[(o.indexOf(fadeLen)+1)%4];fdBtn.forEach(x=>x.textContent='FADE OUT\n'+fadeLen+'s');flash('FADE OUT: '+fadeLen+' second fade')},500)},decks[d]);
   ['pointerup','pointercancel'].forEach(ev=>f.addEventListener(ev,()=>{clearTimeout(f._t);if(ev==='pointerup'&&!f._h)fadeOut(d,fadeLen)}));
   [k,f].forEach(b=>{b.style.fontSize='11px';b.style.whiteSpace='pre-line';b.style.lineHeight='1.15'});lkBtn[d]=k;fdBtn[d]=f});
 var autoBM=true,bmRun=false;
@@ -2110,7 +2110,7 @@ function smpSync(){smpLB.classList.toggle('on',smpLoad);smpCB.classList.toggle('
 function openPads(d){if(eqOpen)closeEQ();if(cueOpen)closeCue();padsOpen=true;padDeck=d;fxDeckSel=d;fxCtlSync();bk.style.display='block';ttl.textContent='PADS · DECK '+L[d];
   padBtn.forEach((b,i)=>b.classList.toggle('on',i===d));setMode(padMode)}
 function closePads(){fxEnd();endRoll(0);endRoll(1);padsOpen=false;bk.style.display='none';padBtn.forEach(b=>b.classList.remove('on'))}
-const padBtn=[0,1].map(d=>{const b=btn('PADS MODE',140,170,72,40,()=>(padsOpen&&padDeck===d)?closePads():openPads(d),decks[d]);b.style.fontSize='11px';return b});
+const padBtn=[0,1].map(d=>{const b=btn('PADS MODE',132,190,72,40,()=>(padsOpen&&padDeck===d)?closePads():openPads(d),decks[d]);b.style.fontSize='11px';return b});
 })();
 
 // ===== STOP button (pulang bilog na may ilaw) =====
