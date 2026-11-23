@@ -587,7 +587,7 @@ const WIN=8,RES=50; // 8 segundo ang nakikita, 50 bar bawat segundo
 topC.forEach((c,i)=>{let dn=false,x0=0,t0=0;
   c.addEventListener('pointerdown',e=>{const a=audios[i];if(!a||!a.duration)return;dn=true;x0=e.clientX;t0=a.currentTime;c.setPointerCapture(e.pointerId)});
   c.addEventListener('pointermove',e=>{const a=audios[i];if(!dn||!a)return;const r=c.getBoundingClientRect();
-    a.currentTime=Math.max(0,Math.min(a.duration,t0-(e.clientX-x0)/r.width*WIN))});
+    a.currentTime=Math.max(0,Math.min(a.duration,t0-(e.clientX-x0)/r.width*WIN*(a.playbackRate||1)))});
   c.addEventListener('pointerup',()=>dn=false);c.addEventListener('pointercancel',()=>dn=false);
 });
 let lastW=0;
@@ -600,11 +600,15 @@ function smoothT(i){const a=audios[i];if(!a)return 0;const n=performance.now(),s
   return a.paused?a.currentTime:s.t+Math.min(.25,(n-s.at)/1000)*a.playbackRate}
 function drawTop(c,i){const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);
   const on=i?TH.b:TH.a,off=i?TH.boff:TH.aoff,pk=peaks[i];
-  const nb=WIN*RES,t=smoothT(i),pos=t*RES,base=Math.floor(pos),fr=pos-base;
+  // rt = playback rate: pareho ang bilis ng scroll (px bawat REAL na segundo) ng deck A at B, kaya pantay ang wave at beat grid kahit magkaiba ang tempo
+  const rt=(audios[i]&&audios[i].playbackRate)||1;
+  const nb=WIN*RES,t=smoothT(i),pos=t*RES/rt,base=Math.floor(pos),fr=pos-base;
   const vals=wvVals[i]||(wvVals[i]=new Float32Array(nb+1));
-  for(let k=0;k<=nb;k++){const idx=base+k-(nb>>1);vals[k]=pk?(idx>=0&&idx<pk.length?Math.max(.04,pk[idx]):.02):.05}
+  for(let k=0;k<=nb;k++){const x=(base+k-(nb>>1))*rt;let v=.05;
+    if(pk){const i0=Math.floor(x),f=x-i0;v=(i0>=0&&i0+1<pk.length)?Math.max(.04,pk[i0]*(1-f)+pk[i0+1]*f):.02}
+    vals[k]=v}
   wvPaint(g,w,h,wvStyle[i]|0,on,off,vals,nb>>1,fr,!!i);
-  if(window.gridDraw)gridDraw(g,w,h,i,t,nb);
+  if(window.gridDraw)gridDraw(g,w,h,i,t,nb,rt);
   g.shadowBlur=0;g.fillStyle='#fff';g.fillRect(w/2-1,0,2,h)}
 function drawBot(c){const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);
   if(master&&!window.fd)window.fd=new Uint8Array(master.frequencyBinCount);
@@ -984,13 +988,13 @@ function gridAnchor(i,t){const I=info[i];if(!I||!bpmBase[i])return null;
     if(g&&g.tok===tok[i]&&g.bpm===bpmBase[i]){let d=((na-g.a)%per+per)%per;if(d>per/2)d-=per;if(Math.abs(d)>=.006)g.a=na;g.at=t}
     else g=gridA[i]={a:na,at:t,tok:tok[i],bpm:bpmBase[i]}}
   return g.a}
-window.gridDraw=function(g,w,h,i,t,nb){
+window.gridDraw=function(g,w,h,i,t,nb,rt){rt=rt||1;
   if(!gridOn)return;const I=info[i];if(!I||!bpmBase[i])return;
   const a=gridAnchor(i,t);if(a===null||!isFinite(a))return;
-  const per=60/bpmBase[i],m=gridMan[i],ref=(m&&m.tok===tok[i])?m.t:(I.intro||0),half=nb/2/RES,bw=w/nb;
+  const per=60/bpmBase[i],m=gridMan[i],ref=(m&&m.tok===tok[i])?m.t:(I.intro||0),half=nb/2/RES*rt,bw=w/nb;
   const first=Math.ceil((t-half-a)/per),last=Math.floor((t+half-a)/per);if(last-first>300)return;
   g.shadowBlur=0;
-  for(let n=first;n<=last;n++){const bt=a+n*per,x=Math.round(((bt-t)*RES+nb/2)*bw),bar=Math.round((bt-ref)/per),db=((bar%4)+4)%4===0;
+  for(let n=first;n<=last;n++){const bt=a+n*per,x=Math.round(((bt-t)*RES/rt+nb/2)*bw),bar=Math.round((bt-ref)/per),db=((bar%4)+4)%4===0;
     g.fillStyle=db?'rgba(255,255,255,.95)':'rgba(255,255,255,.4)';
     if(db)g.fillRect(x-1,0,2,h);else g.fillRect(x,h*.2,1,h*.6)}};
 function gridDeck(){const pl=[0,1].filter(i=>audios[i]&&audios[i].src&&!audios[i].paused);
