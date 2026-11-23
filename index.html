@@ -1598,13 +1598,14 @@ const st=document.createElement('style');st.textContent='@keyframes jogspin{to{t
 const back=document.createElement('div');back.className='eqback';stage.appendChild(back);
 const root=document.createElement('div');root.className='mid';back.appendChild(root);
 const T=(txt,l,t,cls)=>{const e=document.createElement('div');e.className=cls||'cl';e.textContent=txt;e.style.left=l+'px';e.style.top=t+'px';root.appendChild(e);return e};
+const Tc=(txt,l,t,w)=>{const e=T(txt,l,t);e.style.width=w+'px';e.style.textAlign='center';e.style.whiteSpace='normal';return e};
 const jb=btn('JOG',-50,306,100,40,()=>{back.style.display='block'});
 jb.innerHTML=JSVG(20)+'<span style="font-size:13px;margin-left:6px">JOG</span>';jb.style.padding='0';
-T('JOG WHEEL',-374,30,'eqt');
-const wheel=document.createElement('div');wheel.style.cssText='position:absolute;left:-90px;top:10px;width:52px;height:52px;color:#00e5ff';wheel.innerHTML=JSVG(52);root.appendChild(wheel);
+T('JOG WHEEL',-44,30,'eqt');
+const wheel=document.createElement('div');wheel.style.cssText='position:absolute;left:-110px;top:10px;width:52px;height:52px;color:#00e5ff';wheel.innerHTML=JSVG(52);root.appendChild(wheel);
 const spin=()=>{wheel.firstChild.style.animation='jogspin '+(60/Math.max(5,J.rpm))+'s linear infinite'};
 const sets={};
-btn('RESET',50,20,100,46,()=>{Object.assign(J,D0);sync(true)},root);
+btn('RESET',-374,20,100,46,()=>{Object.assign(J,D0);sync(true)},root);
 btn('CLOSE',274,20,100,46,()=>{back.style.display='none'},root);
 const mb={};
 [['vinyl','VINYL SCRATCH',-374,246],['bend','PITCH BEND',-122,246],['seek','SEEK / SEARCH',130,244]].forEach(d=>{
@@ -1612,15 +1613,15 @@ const mb={};
 const tb={};
 [['slip','SLIP MODE',-374,180],['inv','REVERSE DIR',-188,180],['hap','HAPTIC TICK',-2,180],['tspin','SPIN WITH TEMPO',184,190]].forEach(d=>{
   tb[d[0]]=btn(d[1],d[2],128,d[3],44,()=>{J[d[0]]=!J[d[0]];sync()},root)});
-T('PLATTER RPM',-374,186,'cl');
-[['33⅓',100/3,-374],['45',45,-248],['78',78,-122]].forEach(p=>{btn(p[0],p[2],206,110,40,()=>{J.rpm=p[1];sets.rpm((J.rpm-20)/60)},root)});
+Tc('PLATTER RPM',-374,186,748);
+[['33⅓',100/3,-173],['45',45,-55],['78',78,63]].forEach(p=>{btn(p[0],p[2],206,110,40,()=>{J.rpm=p[1];sets.rpm((J.rpm-20)/60)},root)});
 const SD=[['spr','SCRATCH SPEED',.9,3.6,v=>v.toFixed(2)+' s/rev'],['smooth','SCRATCH SMOOTH',0,120,v=>Math.round(v)+' ms'],
  ['rpm','ROTATION SPEED',20,80,v=>v.toFixed(1)+' RPM'],['bend','BEND RANGE',2,16,v=>'±'+Math.round(v)+'%'],
  ['seekSpr','SEEK SPEED',.9,7.2,v=>v.toFixed(2)+' s/rev'],['dz','DEADZONE',0,6,v=>v.toFixed(1)+'°']];
-SD.forEach((d,n)=>{const x=n<3?-350:40,y=330+(n%3)*70,L=T('',x-24,y-36),mn=d[2],mx=d[3];
+SD.forEach((d,n)=>{const x=n<3?-350:50,y=330+(n%3)*70,L=Tc('',x-24,y-36,348),mn=d[2],mx=d[3];
   sets[d[0]]=slider(x,y,300,false,(J[d[0]]-mn)/(mx-mn),v=>{J[d[0]]=mn+v*(mx-mn);L.textContent=d[1]+':  '+d[4](J[d[0]]);sv();if(d[0]==='rpm')spin()},root)});
-T('VINYL: hawak ang platter = scratch (SCRATCH button ng deck) · BEND: ikot habang tumutugtog = bilis/bagal, paused = scrub',-374,548);
-T('SLIP: pagbitaw, babalik sa dapat na posisyon · SMOOTH: mas mataas = mas makinis · DEADZONE: iwas sa maliit na galaw',-374,576);
+Tc('VINYL: hawak ang platter = scratch (SCRATCH button ng deck) · BEND: ikot habang tumutugtog = bilis/bagal, paused = scrub',-374,548,748);
+Tc('SLIP: pagbitaw, babalik sa dapat na posisyon · SMOOTH: mas mataas = mas makinis · DEADZONE: iwas sa maliit na galaw',-374,590,748);
 function sync(full){
   if(full)SD.forEach(d=>sets[d[0]]((J[d[0]]-d[2])/(d[3]-d[2])));
   Object.keys(mb).forEach(k=>mb[k].classList.toggle('on',J.mode===k));
