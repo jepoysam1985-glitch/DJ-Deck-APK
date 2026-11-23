@@ -805,6 +805,7 @@ function fitGrid(r){const e=r.env,R=r.rate,M=e.length,b0=r.bpm;if(!b0||M<R*20)re
   return{bpm:bB,a0,ok:okc>=3}}
 const gOK=(I,i)=>I&&I.g&&I.g.ok&&Math.abs(bpmBase[i]-I.g.bpm)<5e-4;
 function beatSince(i,t,mu){const I=info[i];if(!I||!bpmBase[i])return 0;
+  const gm=window.gridManRef&&window.gridManRef[i];if(gm&&gm.tok===tok[i]){const per=60/(bpmBase[i]*mu);return((t-gm.t)%per+per)%per} // sundin ang manual beat 1 (yung nakikita sa wave)
   if(gOK(I,i)){const per=60/(bpmBase[i]*mu);return((t-I.g.a0)%per+per)%per}
   const per=60/(bpmBase[i]*mu),R=I.rate,P=per*R,e=I.env,ws=Math.max(0,Math.min(t-4,I.dur-8));
   const a=Math.floor(ws*R),b=Math.min(e.length-2,Math.floor((ws+8)*R));let bq=0,bs=-1;
@@ -822,7 +823,8 @@ function alignBeat(s,m,mu){const as=audios[s],am=audios[m],effM=bpmBase[m]*am.pl
   as.currentTime=Math.max(0,tS-d*as.playbackRate);return d}
 function setSync(i,on){
   if(on){const o=1-i;if(!bpmBase[i]||!bpmBase[o]){flash('SYNC: both decks need a BPM');return}
-    if(syncOn[o])setSync(o,false);syncOn[i]=true;applyTempoMatch(i,o,true)}
+    if(syncOn[o])setSync(o,false);syncOn[i]=true;const T0=applyTempoMatch(i,o,true);
+    if(info[i]&&info[o]&&audios[i].src&&audios[o].src&&!audios[i].paused&&!audios[o].paused){try{alignBeat(i,o,T0.mu)}catch(e){}}}
   else{syncOn[i]=false;lockOn[i]=false}
   syncBtn[i].classList.toggle('on',syncOn[i]);if(lkBtn[i])lkBtn[i].classList.toggle('on',lockOn[i])}
 function phaseOff(s,m,mu){const as=audios[s],am=audios[m],Lr=60/(bpmBase[m]*am.playbackRate);
@@ -978,7 +980,7 @@ const aeBtn=btn('AUTO EQ',176,203,58,40,()=>setAutoEq(!autoEq));aeBtn.style.font
 // ===== BEATGRID: beat lines on the waveform (bold line = beat 1 of each bar) =====
 const gridLk=[false,false];
 let gridOn=true;try{gridOn=localStorage.getItem('dj_grid')!=='0'}catch(e){}
-const gridA=[null,null],gridMan=[null,null];
+const gridA=[null,null],gridMan=[null,null];window.gridManRef=gridMan;
 function gridAnchor(i,t){const I=info[i];if(!I||!bpmBase[i])return null;
   const m=gridMan[i];if(m&&m.tok===tok[i])return m.t;
   if(gOK(I,i))return I.g.a0;
@@ -1003,11 +1005,20 @@ const gdBtn=btn('BEATGRID',-50,510,100,40,()=>{gdBtn._h=false;clearTimeout(gdBtn
   gdBtn._t=setTimeout(()=>{gdBtn._h=true;const d=gridDeck();
     if(!info[d]||!bpmBase[d]){flash('BEATGRID: Deck '+L[d]+' has no BPM yet');return}
     gridMan[d]={t:smoothT(d),tok:tok[d]};gridOn=true;gdBtn.classList.add('on');try{localStorage.setItem('dj_grid','1')}catch(e){}
-    flash('BEATGRID: Deck '+L[d]+' — beat 1 set here (loads a new song = auto grid again)',4500)},500)});
+    flash('BEATGRID: Deck '+L[d]+' — beat 1 set here (loads a new song = auto grid again)',4500);
+    if(bpmBase[1-d]&&info[1-d]&&!audios[0].paused&&!audios[1].paused)setTimeout(()=>alignNow(false),120)},500)});
 ['pointerup','pointercancel'].forEach(ev=>gdBtn.addEventListener(ev,()=>{clearTimeout(gdBtn._t);
   if(ev==='pointerup'&&!gdBtn._h){gridOn=!gridOn;gdBtn.classList.toggle('on',gridOn);try{localStorage.setItem('dj_grid',gridOn?'1':'0')}catch(e){}
     flash(gridOn?'BEATGRID: ON — hold the button to set beat 1 at the playhead':'BEATGRID: OFF')}}));
 gdBtn.style.fontSize='11px';gdBtn.classList.toggle('on',gridOn);
+// ===== ALIGN BEAT: ihahanay ang beat ng kabilang deck sa master deck (para pantay ang beat lines sa A at B) =====
+function alignNow(say){const m=gridDeck(),s=1-m;
+  if(!audios[0].src||!audios[1].src){if(say)flash('ALIGN BEAT: load both songs first');return}
+  if(!bpmBase[0]||!bpmBase[1]||!info[0]||!info[1]){if(say)flash('ALIGN BEAT: both decks need a BPM');return}
+  const T=applyTempoMatch(s,m,false);let d=0;
+  for(let n=0;n<2;n++){d=alignBeat(s,m,T.mu);if(Math.abs(d)<.012)break}
+  if(say)flash('ALIGN BEAT: Deck '+L[s]+' → '+L[m]+' ('+Math.round(d*1000)+' ms)')}
+const alBtn=btn('ALIGN',-50,556,100,34,()=>alignNow(true));alBtn.style.fontSize='11px';
 initEQ();
 setInterval(()=>{
   for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)).toFixed(1):'---';
