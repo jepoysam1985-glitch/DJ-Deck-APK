@@ -1,6 +1,6 @@
 {
   "appId": "com.djdeck.app",
-  "appName": "DJ Deck",
+  "appName": "The Groove Mixer Pro",
   "webDir": "www",
   "android": {
     "allowMixedContent": true

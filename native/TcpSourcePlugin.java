@@ -75,7 +75,7 @@ public class TcpSourcePlugin extends Plugin {
           String r = readLine(in);
           if (!r.startsWith("OK")) {
             s.close();
-            call.reject(r.isEmpty() ? "walang sagot ang server" : r);
+            call.reject(r.isEmpty() ? "the server did not respond" : r);
             return;
           }
           s.setSoTimeout(1500);
@@ -103,7 +103,7 @@ public class TcpSourcePlugin extends Plugin {
             String st = readLine(in);
             if (!(st.contains(" 200") || st.contains(" 100"))) {
               s.close();
-              call.reject(st.isEmpty() ? "walang sagot ang server" : st);
+              call.reject(st.isEmpty() ? "the server did not respond" : st);
               return;
             }
           } catch (SocketTimeoutException e) { }
