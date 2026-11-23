@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
     registerPlugin(FolderPickerPlugin.class);
     registerPlugin(RtmpPlugin.class);
     registerPlugin(PerfPlugin.class);
+    registerPlugin(RecSavePlugin.class);
     super.onCreate(savedInstanceState);
     goImmersive();
   }

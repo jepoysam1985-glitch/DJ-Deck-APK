@@ -51,7 +51,7 @@ jobs:
         run: |
           D=android/app/src/main/java/com/djdeck/app
           mkdir -p "$D"
-          cp native/TcpSourcePlugin.java native/FolderPickerPlugin.java native/RtmpPlugin.java native/RtmpService.java native/MainActivity.java native/PerfPlugin.java "$D/"
+          cp native/TcpSourcePlugin.java native/FolderPickerPlugin.java native/RtmpPlugin.java native/RtmpService.java native/MainActivity.java native/PerfPlugin.java native/RecSavePlugin.java "$D/"
 
       - name: Add RTMP library (RootEncoder)
         run: |
