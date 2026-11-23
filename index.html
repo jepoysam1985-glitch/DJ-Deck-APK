@@ -315,7 +315,7 @@ const playBs=[],chain=[null,null],tempoSet=[],bpmBase=[0,0],bpmSp=[];let progTem
 function vp(){const v=window.visualViewport;return{w:v?v.width:innerWidth,h:v?v.height:innerHeight}}
 function fit(){const p=vp(),s=p.h/720;W=p.w/s;   // pare-parehong scale = hindi nababago ang bilog
   stage.style.transform=`scale(${s})`;stage.style.width=W+'px';
-  vl.style.left=(W/2)+'px';if(window.midEl)midEl.style.left=(W/2)+'px';if(window.eqRoot)eqRoot.style.left=(W/2)+'px';if(window.micRoot)micRoot.style.left=(W/2)+'px';if(window.micEqRoot)micEqRoot.style.left=(W/2)+'px';if(window.cueRoot)cueRoot.style.left=(W/2)+'px';if(window.padRoot)padRoot.style.left=(W/2)+'px';if(window.layoutPads)layoutPads();if(window.eqLayout)eqLayout();if(window.micEqLayout)micEqLayout();if(window.tmpEl)tmpEl[1].style.left=W+'px';if(window.xfLayout)xfLayout();
+  vl.style.left=(W/2)+'px';if(window.midEl)midEl.style.left=(W/2)+'px';if(window.eqRoot)eqRoot.style.left=(W/2)+'px';if(window.micRoot)micRoot.style.left=(W/2)+'px';if(window.jogRoot)jogRoot.style.left=(W/2)+'px';if(window.micEqRoot)micEqRoot.style.left=(W/2)+'px';if(window.cueRoot)cueRoot.style.left=(W/2)+'px';if(window.padRoot)padRoot.style.left=(W/2)+'px';if(window.layoutPads)layoutPads();if(window.eqLayout)eqLayout();if(window.micEqLayout)micEqLayout();if(window.tmpEl)tmpEl[1].style.left=W+'px';if(window.xfLayout)xfLayout();
   const dl=Math.max(280,W/4-25);decks[0]&&(decks[0].style.left=dl+'px');decks[1]&&(decks[1].style.left=(W-dl)+'px')}
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,200));document.addEventListener('fullscreenchange',()=>setTimeout(fit,100));document.addEventListener('webkitfullscreenchange',()=>setTimeout(fit,100));if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 try{screen.orientation.lock('landscape').catch(()=>{})}catch(e){}
@@ -1596,7 +1596,7 @@ const D0={mode:'vinyl',spr:1.8,smooth:35,rpm:100/3,bend:8,seekSpr:1.8,dz:.5,slip
 const JSVG=s=>'<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6.2"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><path d="M12 2.2v3.4" stroke-width="3"/></svg>';
 const st=document.createElement('style');st.textContent='@keyframes jogspin{to{transform:rotate(360deg)}}';document.head.appendChild(st);
 const back=document.createElement('div');back.className='eqback';stage.appendChild(back);
-const root=document.createElement('div');root.className='mid';back.appendChild(root);
+const root=document.createElement('div');root.className='mid';back.appendChild(root);window.jogRoot=root;root.style.left=(W/2)+'px';
 const T=(txt,l,t,cls)=>{const e=document.createElement('div');e.className=cls||'cl';e.textContent=txt;e.style.left=l+'px';e.style.top=t+'px';root.appendChild(e);return e};
 const Tc=(txt,l,t,w)=>{const e=T(txt,l,t);e.style.width=w+'px';e.style.textAlign='center';e.style.whiteSpace='normal';return e};
 const jb=btn('JOG',-50,306,100,40,()=>{back.style.display='block'});
