@@ -604,6 +604,7 @@ function drawTop(c,i){const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRec
   const vals=wvVals[i]||(wvVals[i]=new Float32Array(nb+1));
   for(let k=0;k<=nb;k++){const idx=base+k-(nb>>1);vals[k]=pk?(idx>=0&&idx<pk.length?Math.max(.04,pk[idx]):.02):.05}
   wvPaint(g,w,h,wvStyle[i]|0,on,off,vals,nb>>1,fr,!!i);
+  if(window.gridDraw)gridDraw(g,w,h,i,t,nb);
   g.shadowBlur=0;g.fillStyle='#fff';g.fillRect(w/2-1,0,2,h)}
 function drawBot(c){const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);
   if(master&&!window.fd)window.fd=new Uint8Array(master.frequencyBinCount);
@@ -954,6 +955,37 @@ const amBtn=btn('AUTOMIX\n'+amixLen+'s',-234,203,58,40,()=>{amBtn._h=false;clear
 amBtn.style.fontSize='10px';amBtn.style.padding='0';amBtn.style.whiteSpace='pre-line';amBtn.style.lineHeight='1.15';
 const eqBtns=[0,1].map(d=>btn('EQ',58,240,72,40,()=>(eqOpen&&eqDeck===d)?closeEQ():openEQ(d),decks[d]));
 const aeBtn=btn('AUTO EQ',176,203,58,40,()=>setAutoEq(!autoEq));aeBtn.style.fontSize='10px';aeBtn.style.padding='0';
+// ===== BEATGRID: beat lines on the waveform (bold line = beat 1 of each bar) =====
+let gridOn=true;try{gridOn=localStorage.getItem('dj_grid')!=='0'}catch(e){}
+const gridA=[null,null],gridMan=[null,null];
+function gridAnchor(i,t){const I=info[i];if(!I||!bpmBase[i])return null;
+  const m=gridMan[i];if(m&&m.tok===tok[i])return m.t;
+  const per=60/bpmBase[i];let g=gridA[i];
+  if(!g||g.tok!==tok[i]||g.bpm!==bpmBase[i]||Math.abs(t-g.at)>1.5){
+    const na=t-beatSince(i,t,1);
+    if(g&&g.tok===tok[i]&&g.bpm===bpmBase[i]){let d=((na-g.a)%per+per)%per;if(d>per/2)d-=per;if(Math.abs(d)>=.04)g.a=na;g.at=t}
+    else g=gridA[i]={a:na,at:t,tok:tok[i],bpm:bpmBase[i]}}
+  return g.a}
+window.gridDraw=function(g,w,h,i,t,nb){
+  if(!gridOn)return;const I=info[i];if(!I||!bpmBase[i])return;
+  const a=gridAnchor(i,t);if(a===null||!isFinite(a))return;
+  const per=60/bpmBase[i],m=gridMan[i],ref=(m&&m.tok===tok[i])?m.t:(I.intro||0),half=nb/2/RES,bw=w/nb;
+  const first=Math.ceil((t-half-a)/per),last=Math.floor((t+half-a)/per);if(last-first>300)return;
+  g.shadowBlur=0;
+  for(let n=first;n<=last;n++){const bt=a+n*per,x=Math.round(((bt-t)*RES+nb/2)*bw),bar=Math.round((bt-ref)/per),db=((bar%4)+4)%4===0;
+    g.fillStyle=db?'rgba(255,255,255,.95)':'rgba(255,255,255,.4)';
+    if(db)g.fillRect(x-1,0,2,h);else g.fillRect(x,h*.2,1,h*.6)}};
+function gridDeck(){const pl=[0,1].filter(i=>audios[i]&&audios[i].src&&!audios[i].paused);
+  if(pl.length===2){const g=gains();return g[0]>=g[1]?0:1}return pl.length?pl[0]:(audios[0]&&audios[0].src?0:1)}
+const gdBtn=btn('BEATGRID',-50,510,100,40,()=>{gdBtn._h=false;clearTimeout(gdBtn._t);
+  gdBtn._t=setTimeout(()=>{gdBtn._h=true;const d=gridDeck();
+    if(!info[d]||!bpmBase[d]){flash('BEATGRID: Deck '+L[d]+' has no BPM yet');return}
+    gridMan[d]={t:smoothT(d),tok:tok[d]};gridOn=true;gdBtn.classList.add('on');try{localStorage.setItem('dj_grid','1')}catch(e){}
+    flash('BEATGRID: Deck '+L[d]+' — beat 1 set here (loads a new song = auto grid again)',4500)},500)});
+['pointerup','pointercancel'].forEach(ev=>gdBtn.addEventListener(ev,()=>{clearTimeout(gdBtn._t);
+  if(ev==='pointerup'&&!gdBtn._h){gridOn=!gridOn;gdBtn.classList.toggle('on',gridOn);try{localStorage.setItem('dj_grid',gridOn?'1':'0')}catch(e){}
+    flash(gridOn?'BEATGRID: ON — hold the button to set beat 1 at the playhead':'BEATGRID: OFF')}}));
+gdBtn.style.fontSize='11px';gdBtn.classList.toggle('on',gridOn);
 initEQ();
 setInterval(()=>{
   for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)).toFixed(1):'---';
