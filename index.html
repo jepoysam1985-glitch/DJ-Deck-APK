@@ -733,6 +733,7 @@ applyTheme(themeIdx);
 // ---- audio graph helpers ----
 function applyEQ(i){const c=chain[i];if(!c)return;c.eq.forEach((b,k)=>b.gain.setTargetAtTime(eqDb[i][k],ctx.currentTime,.02))}
 function applyTrim(i){const c=chain[i];if(!c)return;c.trim.gain.setTargetAtTime(autoEq?Math.pow(10,trimDb[i]/20):1,ctx.currentTime,.05)}
+const lockTrim=[1,1],lastR=[0,0];
 function djUserTempo(i){if(syncOn[i])setSync(i,false)}
 function djReset(i){window.SCbuf&&(SCbuf[i]=null);cueReset(i);tok[i]++;info[i]=null;bpmBase[i]=0;done[i]=false;trimDb[i]=0;applyTrim(i);
   if(syncOn[i])setSync(i,false);if(autoEq)eqSet[i].forEach(s=>s(.5))}
@@ -831,7 +832,7 @@ function setSync(i,on){
   if(on){const o=1-i;if(!bpmBase[i]||!bpmBase[o]){flash('SYNC: both decks need a BPM');return}
     if(syncOn[o])setSync(o,false);syncOn[i]=true;const T0=applyTempoMatch(i,o,true);
     if(info[i]&&info[o]&&audios[i].src&&audios[o].src&&!audios[i].paused&&!audios[o].paused){try{alignBeat(i,o,T0.mu)}catch(e){}}}
-  else{syncOn[i]=false;lockOn[i]=false;const a=audios[i],P=window.slPos; // ibalik sa slider ang rate kung lumampas ito sa ±10%
+  else{syncOn[i]=false;lockOn[i]=false;lockTrim[i]=1;lastR[i]=0;const a=audios[i],P=window.slPos; // ibalik sa slider ang rate kung lumampas ito sa ±10%
     if(a&&P&&Math.abs(a.playbackRate-P[i])>1e-4&&Math.abs(a.playbackRate-P[i])<.06){a.playbackRate=P[i];a.defaultPlaybackRate=P[i]}}
   syncBtn[i].classList.toggle('on',syncOn[i]);if(lkBtn[i])lkBtn[i].classList.toggle('on',lockOn[i])}
 function phaseOff(s,m,mu){const as=audios[s],am=audios[m],Lr=60/(bpmBase[m]*am.playbackRate);
@@ -1019,13 +1020,13 @@ const gdBtn=btn('BEATGRID',-50,510,100,40,()=>{gdBtn._h=false;clearTimeout(gdBtn
 gdBtn.style.fontSize='11px';gdBtn.classList.toggle('on',gridOn);
 initEQ();
 setInterval(()=>{
-  for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)).toFixed(1):'---';
-    if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]){const T=tempoTarget(i,o);let r=T.r;
+  for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)/(lockTrim[i]||1)).toFixed(1):'---';
+    if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]){const T=tempoTarget(i,o);let r=T.r,tr=1;
       if(lockOn[i]&&!amixBusy&&!a.paused&&!audios[o].paused&&info[i]&&info[o]&&!(window.SC&&(SC.act[i]||SC.act[o]))){const d=phaseOff(i,o,T.mu);
         if(Math.abs(d)>.12){if(performance.now()-lockT[i]>1500){lockT[i]=performance.now();alignBeat(i,o,T.mu)}}
-        else if(Math.abs(d)>.0015)r*=1-Math.max(-.01,Math.min(.01,d*.25));
+        else if(Math.abs(d)>.005||(lockTrim[i]!==1&&Math.abs(d)>.002))tr=1-Math.max(-.003,Math.min(.003,d*.08));
         const lk=Math.abs(d)<.006;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' ↔ '+L[o]);gridLk[i]=lk}
-      r=Math.max(.85,Math.min(1.15,r));applyRate(i,r)}}}
+      r=Math.max(.85,Math.min(1.15,r));if(Math.abs(r-lastR[i])>1e-5){applyRate(i,r);lastR[i]=r}lockTrim[i]=tr;const eff=r*tr;if(a&&Math.abs(a.playbackRate-eff)>1e-5){a.playbackRate=eff;a.defaultPlaybackRate=eff}}else lockTrim[i]=1}else lockTrim[i]=1}
   for(let i=0;i<2;i++){if(!lockOn[i]||!syncOn[i]||performance.now()-lockT[i]<2500)continue;const o=1-i;
     if(audios[i].paused||audios[o].paused||!info[i]||!info[o]||!bpmBase[i]||!bpmBase[o])continue;
     lockT[i]=performance.now();const mu=tempoTarget(i,o).mu;if(Math.abs(phaseOff(i,o,mu))>.12)alignBeat(i,o,mu)}
