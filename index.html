@@ -813,6 +813,31 @@ const amBtn=btn('AUTOMIX\n'+amixLen+'s',-234,203,58,40,()=>{amBtn._h=false;clear
   amBtn._t=setTimeout(()=>{amBtn._h=true;const o=[6,10,16,24];amixLen=o[(o.indexOf(amixLen)+1)%4];amBtn.textContent='AUTOMIX\n'+amixLen+'s';flash('AUTOMIX: '+amixLen+' second transition')},500)});
 ['pointerup','pointercancel'].forEach(ev=>amBtn.addEventListener(ev,()=>{clearTimeout(amBtn._t);if(ev==='pointerup'&&!amBtn._h)setAutoMix(!autoMix)}));
 amBtn.style.fontSize='10px';amBtn.style.padding='0';amBtn.style.whiteSpace='pre-line';amBtn.style.lineHeight='1.15';
+// ===== SMART FADE: one-tap smart crossfade (tap = go / tap again = cancel · hold = length 4/8/16/24s) =====
+let sfLen=8,sfBusy=false,sfAbort=false;
+const sfReady=y=>!!(chain[y]&&audios[y]&&audios[y].src&&isFinite(audios[y].duration)&&!done[y]);
+async function smartFade(){
+  if(amixBusy||sfBusy){sfAbort=true;amixAbort=true;flash('SMART FADE: cancelled');return}
+  if(!ctx||!xfSet){flash('SMART FADE: start a song first');return}
+  const pl=[0,1].filter(i=>chain[i]&&!audios[i].paused&&!audios[i].ended);
+  if(!pl.length){flash('SMART FADE: play a song first');return}
+  sfBusy=true;sfAbort=false;sfBtn.classList.add('on');
+  try{
+    if(pl.length===1){
+      const x=pl[0],y=1-x;
+      if(!sfReady(y)){flash(`SMART FADE: load a new song on Deck ${L[y]} first`,3500);return}
+      const o=amixLen;amixLen=sfLen;try{await startAutomix(x,y)}finally{amixLen=o}
+    }else{
+      const g=gains(),to=g[0]>=g[1]?1:0,v0=(xf+1)/2,len=sfLen*1000,ts=performance.now();
+      flash(`SMART FADE: → Deck ${L[to]} · ${sfLen}s`,3000);
+      while(performance.now()-ts<len){if(sfAbort)return;const p=(performance.now()-ts)/len;xfSet(v0+(to-v0)*p);idleMsg=`SMART FADE → ${L[to]}  ${Math.ceil(sfLen*(1-p))}s`;await sleep(40)}
+      xfSet(to);idleMsg=''}
+  }catch(err){console.error(err)}
+  finally{sfBusy=false;sfAbort=false;sfBtn.classList.remove('on')}}
+const sfBtn=btn('SMART FADE\n'+sfLen+'s',-50,662,100,40,()=>{sfBtn._h=false;clearTimeout(sfBtn._t);
+  sfBtn._t=setTimeout(()=>{sfBtn._h=true;const o=[4,8,16,24];sfLen=o[(o.indexOf(sfLen)+1)%4];sfBtn.textContent='SMART FADE\n'+sfLen+'s';flash('SMART FADE: '+sfLen+' second fade')},500)});
+['pointerup','pointercancel'].forEach(ev=>sfBtn.addEventListener(ev,()=>{clearTimeout(sfBtn._t);if(ev==='pointerup'&&!sfBtn._h)smartFade()}));
+sfBtn.style.fontSize='11px';sfBtn.style.padding='0';sfBtn.style.whiteSpace='pre-line';sfBtn.style.lineHeight='1.15';
 const eqBtns=[0,1].map(d=>btn('EQ',58,240,72,40,()=>(eqOpen&&eqDeck===d)?closeEQ():openEQ(d),decks[d]));
 const aeBtn=btn('AUTO EQ',176,203,58,40,()=>setAutoEq(!autoEq));aeBtn.style.fontSize='10px';aeBtn.style.padding='0';
 // ===== BEATGRID: beat lines on the waveform (bold line = beat 1 of each bar) =====
