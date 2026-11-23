@@ -354,14 +354,14 @@ cfg.forEach((d,i)=>{
   const ang=e=>{const r=jog.getBoundingClientRect();return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))*180/Math.PI};
   jog.addEventListener('pointerdown',e=>{drag=true;prev=ang(e);jog.setPointerCapture(e.pointerId);jAcc=0;jBd=0;jV=0;jDz=0;
     if(JOG.mode==='vinyl'){if(window.SC&&SC.on[i])SC.down(i)}
-    else if(JOG.mode==='bend'){if(audio.src&&!audio.paused){jBend=true;jRate0=audio.playbackRate||1}else if(window.SC&&audio.src)SC.down(i)}});
+    else if(JOG.mode==='bend'){if(audio.src&&!audio.paused){jBend=true;audio._rh=1;jRate0=audio.playbackRate||1}else if(window.SC&&audio.src)SC.down(i)}});
   jog.addEventListener('pointermove',e=>{if(!drag)return;let a=ang(e),x=a-prev;if(x>180)x-=360;if(x<-180)x+=360;prev=a;angle+=x;
     if(JOG.hap){jHap+=Math.abs(x);if(jHap>15){jHap=0;try{navigator.vibrate(4)}catch(_){}}}
     jDz+=x;if(Math.abs(jDz)<JOG.dz)return;const xa=(JOG.inv?-1:1)*jDz;jDz=0;
     if(window.SC&&SC.act[i]){if(JOG.smooth>0)jAcc+=xa/360*JOG.spr;else SC.move(i,xa/360*JOG.spr)}
     else if(jBend)jBd+=xa;
     else if(audio.src&&JOG.mode!=='bend')audio.currentTime=Math.max(0,Math.min(audio.duration||1e9,audio.currentTime+xa/360*JOG.seekSpr))});
-  const jup=()=>{if(window.SC&&SC.act[i]&&jAcc){try{SC.move(i,jAcc)}catch(_){}}jAcc=0;if(jBend){audio.playbackRate=jRate0;jBend=false}drag=false;window.SC&&SC.up(i)};jog.addEventListener('pointerup',jup);jog.addEventListener('pointercancel',jup);
+  const jup=()=>{if(window.SC&&SC.act[i]&&jAcc){try{SC.move(i,jAcc)}catch(_){}}jAcc=0;if(jBend){audio.playbackRate=jRate0;jBend=false;audio._rh=0}drag=false;window.SC&&SC.up(i)};jog.addEventListener('pointerup',jup);jog.addEventListener('pointercancel',jup);
   (function loop(t){const dt=Math.min(.1,(t-last)/1000);last=t;
     if(drag&&window.SC&&SC.act[i]&&JOG.smooth>0&&jAcc!==0){const k=1-Math.exp(-dt/(JOG.smooth/1000)),st=Math.abs(jAcc)<1e-4?jAcc:jAcc*k;jAcc-=st;if(st)SC.move(i,st)}
     if(drag&&jBend){jV=jV*.6+(dt>0?jBd/dt:0)*.4;jBd=0;const f=Math.max(-1.5,Math.min(1.5,jV/(JOG.rpm*6)));audio.playbackRate=Math.max(.5,jRate0*(1+f*JOG.bend/100))}
@@ -1021,15 +1021,12 @@ gdBtn.style.fontSize='11px';gdBtn.classList.toggle('on',gridOn);
 initEQ();
 setInterval(()=>{
   for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)/(lockTrim[i]||1)).toFixed(1):'---';
-    if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]){const T=tempoTarget(i,o);let r=T.r,tr=1;
+    if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]&&!(a&&a._rh)){const T=tempoTarget(i,o);let r=T.r,tr=1;
       if(lockOn[i]&&!amixBusy&&!a.paused&&!audios[o].paused&&info[i]&&info[o]&&!(window.SC&&(SC.act[i]||SC.act[o]))){const d=phaseOff(i,o,T.mu);
         if(Math.abs(d)>.12){if(performance.now()-lockT[i]>1500){lockT[i]=performance.now();alignBeat(i,o,T.mu)}}
         else if(Math.abs(d)>.005||(lockTrim[i]!==1&&Math.abs(d)>.002))tr=1-Math.max(-.003,Math.min(.003,d*.08));
         const lk=Math.abs(d)<.006;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' ↔ '+L[o]);gridLk[i]=lk}
       r=Math.max(.85,Math.min(1.15,r));if(Math.abs(r-lastR[i])>1e-5){applyRate(i,r);lastR[i]=r}lockTrim[i]=tr;const eff=r*tr;if(a&&Math.abs(a.playbackRate-eff)>1e-5){a.playbackRate=eff;a.defaultPlaybackRate=eff}}else lockTrim[i]=1}else lockTrim[i]=1}
-  for(let i=0;i<2;i++){if(!lockOn[i]||!syncOn[i]||performance.now()-lockT[i]<2500)continue;const o=1-i;
-    if(audios[i].paused||audios[o].paused||!info[i]||!info[o]||!bpmBase[i]||!bpmBase[o])continue;
-    lockT[i]=performance.now();const mu=tempoTarget(i,o).mu;if(Math.abs(phaseOff(i,o,mu))>.12)alignBeat(i,o,mu)}
   amixCheck();
   const t=performance.now()<flashUntil?flashMsg:idleMsg;stat.textContent=t;stat.style.opacity=t?1:0;
   if(eqOpen)updEqInfo()},250);
@@ -2094,9 +2091,9 @@ function fxLabel(){effBtns.forEach((b,k)=>b.classList.toggle('on',fxSet.has(k)))
   fxTx.style.opacity=(fxDown||fxLatch)?.15:1;fxMixBar.style.display=padMode==='fx'?'block':'none';fxCtlSync()}
 // Special FX na hindi dumadaan sa audio chain: BRAKE, REVERSE, PITCH BEND
 const rateBack=o=>{const a=o.a,s=a.playbackRate,t0=performance.now();
-  const tm=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/250);a.playbackRate=s+(o.r0-s)*k;if(k>=1){clearInterval(tm);a.playbackRate=o.r0;try{a.preservesPitch=o.pp!==undefined?o.pp:true;a.webkitPreservesPitch=a.preservesPitch}catch(e){}}},30)};
+  const tm=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/250);a.playbackRate=s+(o.r0-s)*k;if(k>=1){clearInterval(tm);a._rh=0;a.playbackRate=o.r0;try{a.preservesPitch=o.pp!==undefined?o.pp:true;a.webkitPreservesPitch=a.preservesPitch}catch(e){}}},30)};
 const FXS={
-  brake:{start(d,x){const a=audios[d];if(!a||!a.src||a.paused)return null;const o={d,a,r0:a.playbackRate,pp:a.preservesPitch,t0:performance.now(),dur:.25+x*2.5,tm:null};
+  brake:{start(d,x){const a=audios[d];if(!a||!a.src||a.paused)return null;const o={d,a,r0:a.playbackRate,pp:a.preservesPitch,t0:performance.now(),dur:.25+x*2.5,tm:null};a._rh=1;
       try{a.preservesPitch=false;a.webkitPreservesPitch=false}catch(e){}
       o.tm=setInterval(()=>{const k=Math.min(1,(performance.now()-o.t0)/1000/o.dur);a.playbackRate=Math.max(.07,o.r0*(1-k))},30);return o},
     move(o,x){o.dur=.25+x*2.5},end(o){clearInterval(o.tm);rateBack(o)}},
@@ -2105,7 +2102,7 @@ const FXS={
       o.tm=setInterval(()=>{const real=(performance.now()-SC.t[d])/1000;SC.move(d,-real*o.rate)},45);return o},
     move(){},
     end(o){clearInterval(o.tm);SC.up(o.d);try{o.a.currentTime=Math.min(o.a.duration||1e9,o.t0+(performance.now()-o.at)/1000*o.rate)}catch(e){}}},
-  pitch:{start(d,x,y){const a=audios[d];if(!a||!a.src)return null;const o={d,a,r0:a.playbackRate,pp:a.preservesPitch};
+  pitch:{start(d,x,y){const a=audios[d];if(!a||!a.src)return null;const o={d,a,r0:a.playbackRate,pp:a.preservesPitch};a._rh=1;
       try{a.preservesPitch=false;a.webkitPreservesPitch=false}catch(e){}FXS.pitch.move(o,x,y);return o},
     move(o,x,y){o.a.playbackRate=Math.max(.1,Math.min(4,o.r0*Math.pow(2,(y-.5)*8/12)))},end(o){rateBack(o)}}};
 const fxDotAt=(x,y)=>{fxDot.style.left=x*100+'%';fxDot.style.top=(1-y)*100+'%'};
