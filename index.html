@@ -1150,7 +1150,7 @@ const MS0={aec:1,ns:1,agc:0,gate:1,lvl:.4,gth:.3,lc:.25,hc:.8,pres:.4,comp:.4,re
 let MS=Object.assign({},MS0);
 try{Object.assign(MS,JSON.parse(localStorage.getItem('dj_mic_v1')||'{}'))}catch(e){}
 const msSave=()=>{try{localStorage.setItem('dj_mic_v1',JSON.stringify(MS))}catch(e){}};
-let micOn=false,micStream=null,mN=null,micDevs=[],duckCur=1,gateHold=0,micTm=null,micOnB=null,micBack=null,micRoot=null,micFill=null,micThr=null;
+let micOn=false,micStream=null,mN=null,micDevs=[],duckCur=1,gateHold=0,micTm=null,micOnB=null,micBack=null,micRoot=null,micFill=null,micThr=null;(window.__busy=window.__busy||{}).mic=()=>micOn;
 const micSet={};
 let micOnB2=null,micEqBack=null;
 const MEQK='dj_mic_eq';let MEQ=new Array(12).fill(0);
@@ -1336,18 +1336,19 @@ let stopB=true,sbtn=null;
 let autoBpm=true;try{autoBpm=localStorage.getItem('dj_autobpm')!=='0'}catch(e){}
 let bpmAutoNext=false,bpmAutoActive=false,bpmUserStop=false;const bpmTry=new Set();
 const decksPlay=()=>{try{return !audios[0].paused||!audios[1].paused}catch(e){return false}};
+const busyNow=()=>{try{const b=window.__busy||{};return Object.keys(b).some(k=>b[k]())}catch(e){return false}}; // mic / REC / GO LIVE / RTMP = huwag mag-scan
 async function bpmScan(){const au=bpmAutoNext;bpmAutoNext=false;if(!stopB){stopB=true;if(!au)bpmUserStop=true;return}
   if(!au)bpmUserStop=false;
   const todo=lib.tracks.filter(t=>!lib.bpm[t.key]&&t.src&&(!au||!bpmTry.has(t.key)));if(!todo.length)return au?0:msg('BPM already known for all songs',3000);
   stopB=false;bpmAutoActive=au;sbtn&&(sbtn.textContent='■ STOP BPM');let n=0;const oc=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,1,44100);
   for(const t of todo){if(stopB)break;
-    if(au)while(!stopB&&decksPlay())await new Promise(r=>setTimeout(r,1500));
+    if(au)while(!stopB&&(decksPlay()||busyNow()))await new Promise(r=>setTimeout(r,1500));
     if(stopB)break;bpmTry.add(t.key);
     try{const f=t.src.getFile?await t.src.getFile():t.src,buf=await oc.decodeAudioData(await f.arrayBuffer()),d=buf.getChannelData(0),sr=buf.sampleRate,len=Math.min(d.length,75*sr),st=Math.floor((d.length-len)/2);
       const r=await analyzeCore(d.subarray(st,st+len),sr,()=>!stopB);if(r&&r.bpm)setBpm(t.key,r.bpm)}catch(e){}
     n++;msg('BPM scan '+n+'/'+todo.length+' · '+t.name)}
   stopB=true;bpmAutoActive=false;sbtn&&(sbtn.textContent='BPM SCAN');msg('BPM scan finished',3000)}
-function autoBpmRun(){if(!autoBpm||!stopB||bpmUserStop||document.hidden||lib.scanning||lib.mscan||lib.nscan||decksPlay())return;
+function autoBpmRun(){if(!autoBpm||!stopB||bpmUserStop||document.hidden||lib.scanning||lib.mscan||lib.nscan||decksPlay()||busyNow())return;
   if(!lib.tracks.some(t=>t.src&&!lib.bpm[t.key]&&!bpmTry.has(t.key)))return;bpmAutoNext=true;bpmScan()}
 setInterval(autoBpmRun,6000);setTimeout(autoBpmRun,4000);
 function setTracks(a){const m=new Map();a.forEach(t=>m.set(t.key,t));lib.tracks=[...m.values()].sort((x,y)=>col.compare(x.name,y.name));lib.map=new Map(lib.tracks.map(t=>[t.key,t]))}
@@ -1854,7 +1855,7 @@ loadLame();
 let rec=null,onAir=false;
 const recB=btn('● REC',-28,135,56,46,()=>toggleRec()),airB=btn('GO LIVE',-50,206,100,40,()=>toggleAir());
 recB.style.color='#ff4b4b';recB.style.padding=airB.style.padding='0';recB.style.fontSize='13px';recB.style.lineHeight='1.1';
-let air=null;
+let air=null;(window.__busy=window.__busy||{}).live=()=>!!(rec||onAir||air);
 // ---- NOW PLAYING -> server metadata (title na lalabas sa website) ----
 let nowI=-1,nowLast='',nowLastT='';
 const nowText=i=>{const m=metas[i];return m&&m.t?(m.a?m.a+' - ':'')+m.t:(titles[i]||'')};
@@ -2348,7 +2349,7 @@ g('stSoS').addEventListener('click',()=>{d[cur]=read();let ok=1;try{localStorage
 g('stSoR').addEventListener('click',()=>{delete d[cur];try{localStorage.setItem(K,JSON.stringify(d))}catch(e){}fill();say('Reset to the recommended preset.')});
 window.getSocialEncoder=p=>{p=p||cur;return Object.assign({},P[p],d[p]||{})};
 const RT=()=>{const C=window.Capacitor;return(C&&C.Plugins&&C.Plugins.Rtmp)||null};
-let live=false,lis=false;const gb=g('stSoG');
+let live=false,lis=false;(window.__busy=window.__busy||{}).rtmp=()=>live;const gb=g('stSoG');
 const setLive=(v,t)=>{live=v;gb.textContent=v?'STOP LIVE':'START LIVE';gb.style.color=v?'#ff2a3a':'';if(t)g('stSoI').textContent=t};
 gb.addEventListener('click',async()=>{
  const N=RT();if(!N){say('LIVE only works in the APK (Android 10 and up).');return}
