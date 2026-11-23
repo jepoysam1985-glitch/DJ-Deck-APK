@@ -374,7 +374,7 @@ const midEl=document.createElement('div');midEl.className='mid';stage.appendChil
 const vol=[1,1];let xf=0;
 function applyGain(){const g=amixBypass?[1,1]:[xf<=0?1:1-xf, xf>=0?1:1+xf];audios.forEach((a,i)=>{const v=Math.max(0,Math.min(1,vol[i]*g[i]*(window.__duck==null?1:window.__duck)));
   if(chain[i]&&ctx)chain[i].fader.gain.setTargetAtTime(v,ctx.currentTime,.015);else if(a)a.volume=v})}
-function slider(x,y,len,vertical,val,cb,par){
+function slider(x,y,len,vertical,val,cb,par,sw){
   const g=document.createElement('div');g.className='groove';
   const hit=document.createElement('div');hit.className='hit';hit.style.borderRadius='10px';
   const k=document.createElement('div');k.className='knob';
@@ -392,7 +392,7 @@ function slider(x,y,len,vertical,val,cb,par){
     if(vertical){k.style.left=(x-23)+'px';k.style.top=(y+(1-v)*len-13)+'px'}
     else{k.style.left=(x+v*len-23)+'px';k.style.top=(y-13)+'px'}ct.classList.toggle('lk',v===.5);cb(v)};
   // CENTER LOCK: pag malapit sa gitna (±3.5%) kusang kumakapit sa eksaktong gitna + konting vibrate
-  let lkd=false;const snap=v=>{if(Math.abs(v-.5)<.035){if(!lkd){lkd=true;try{navigator.vibrate&&navigator.vibrate(10)}catch(e){}}return .5}lkd=false;return v};
+  let lkd=false;const snap=v=>{if(Math.abs(v-.5)<(sw===undefined?.035:sw)){if(!lkd){lkd=true;try{navigator.vibrate&&navigator.vibrate(10)}catch(e){}}return .5}lkd=false;return v};
   const usr=()=>{try{if(eqCont.includes(par))window.slU=performance.now()}catch(e){}};
   const fromEv=e=>{const r=hit.getBoundingClientRect();
     return vertical?1-(e.clientY-(r.top+r.height*20/(len+40)))/(r.height*len/(len+40))
@@ -436,10 +436,10 @@ xfLayout();
 // TAP TEMPO (shared ng BPM box at ng TAP button): tap sa beat = BPM · hold = x2 / ÷2
 const tapS=[[],[]],tapPt=[null,null];
 function tapDown(i){const n=performance.now(),taps=tapS[i];
-  tapPt[i]=setTimeout(()=>{if(bpmBase[i])bpmBase[i]*=bpmBase[i]<100?2:.5;taps.length=0},700);
+  tapPt[i]=setTimeout(()=>{if(bpmBase[i]){bpmBase[i]*=bpmBase[i]<100?2:.5;window.libBpm&&libBpm(i,Math.round(bpmBase[i]*10)/10)}taps.length=0},700);
   if(taps.length&&n-taps[taps.length-1]>2000)taps.length=0;
   taps.push(n);while(taps.length>8)taps.shift();
-  if(taps.length>1){const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);bpmBase[i]=60000/iv/(audios[i]?audios[i].playbackRate:1)}}
+  if(taps.length>1){const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);bpmBase[i]=60000/iv/(audios[i]?audios[i].playbackRate:1);window.libBpm&&libBpm(i,Math.round(bpmBase[i]*10)/10)}}
 function tapUp(i){clearTimeout(tapPt[i])}
 // BPM display: auto-detect pag nag-load; tap tempo para itama; pindutin nang matagal = x2 / ÷2
 [-95,95].forEach((x,i)=>{
@@ -464,7 +464,7 @@ window.tmpEl=tmpEl;tmpEl[0].style.left='0px';tmpEl[1].style.left=W+'px';
     (window.slPos||(window.slPos=[1,1]))[i]=r;
     if(a){a.playbackRate=r;a.defaultPlaybackRate=r}
     val.textContent=(pc>=0?'+':'')+pc.toFixed(1)+'%';
-    if(!progTempo&&djReady)djUserTempo(i)},par);
+    if(!progTempo&&djReady)djUserTempo(i)},par,.004);
   tempoSet[i]=set;
   val.addEventListener('pointerdown',()=>set(.5)); // tap ang % para i-reset sa 0
 });
@@ -1023,7 +1023,7 @@ setInterval(()=>{
     if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]){const T=tempoTarget(i,o);let r=T.r;
       if(lockOn[i]&&!amixBusy&&!a.paused&&!audios[o].paused&&info[i]&&info[o]&&!(window.SC&&(SC.act[i]||SC.act[o]))){const d=phaseOff(i,o,T.mu);
         if(Math.abs(d)>.12){if(performance.now()-lockT[i]>1500){lockT[i]=performance.now();alignBeat(i,o,T.mu)}}
-        else if(Math.abs(d)>.0015)r*=1-Math.max(-.03,Math.min(.03,d*.6));
+        else if(Math.abs(d)>.0015)r*=1-Math.max(-.01,Math.min(.01,d*.25));
         const lk=Math.abs(d)<.006;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' ↔ '+L[o]);gridLk[i]=lk}
       r=Math.max(.85,Math.min(1.15,r));applyRate(i,r)}}}
   for(let i=0;i<2;i++){if(!lockOn[i]||!syncOn[i]||performance.now()-lockT[i]<2500)continue;const o=1-i;
