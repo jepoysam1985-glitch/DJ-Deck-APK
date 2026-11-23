@@ -1612,7 +1612,7 @@ const back=document.createElement('div');back.className='eqback';stage.appendChi
 const root=document.createElement('div');root.className='mid';back.appendChild(root);window.jogRoot=root;root.style.left=(W/2)+'px';
 const T=(txt,l,t,cls)=>{const e=document.createElement('div');e.className=cls||'cl';e.textContent=txt;e.style.left=l+'px';e.style.top=t+'px';root.appendChild(e);return e};
 const Tc=(txt,l,t,w)=>{const e=T(txt,l,t);e.style.width=w+'px';e.style.textAlign='center';e.style.whiteSpace='normal';return e};
-const jb=btn('JOG',-50,306,100,40,()=>{back.style.display='block'});
+const jb=btn('JOG',-50,558,100,40,()=>{back.style.display='block'});
 jb.innerHTML=JSVG(20)+'<span style="font-size:13px;margin-left:6px">JOG</span>';jb.style.padding='0';
 T('JOG WHEEL',-44,30,'eqt');
 const wheel=document.createElement('div');wheel.style.cssText='position:absolute;left:-110px;top:10px;width:52px;height:52px;color:#00e5ff';wheel.innerHTML=JSVG(52);root.appendChild(wheel);
