@@ -1057,41 +1057,9 @@ function qTime(d,t){if(!quantizeOn||!info[d]||!bpmBase[d])return t;
   try{const per=60/bpmBase[d],ph=beatSince(d,t,1),q=ph<per/2?t-ph:t-ph+per,du=audios[d].duration;return Math.max(0,isFinite(du)?Math.min(du,q):q)}catch(e){return t}}
 
 // ===== AUTO SYNC: pag may BPM na ang dalawang deck, ang bagong load na deck ay kusang SYNC + SYNC LOCK sa kabila =====
-let autoSync=true;
+let autoSync=false; // naka-OFF na ang auto sync
 function autoSyncCheck(i){const o=1-i;if(!autoSync||!bpmBase[i]||!bpmBase[o]||syncOn[i]||syncOn[o])return;setLock(i,true)}
 
-// ===== AUTO SYNC: kusang tempo + beat sync pag may bagong tumugtog na deck habang tumutugtog ang isa =====
-const asPrev=[false,false],asPend=[false,false],asAuto=[false,false];
-const asBtn=btn('AUTO\nSYNC',-234,251,58,40,()=>{autoSync=!autoSync;asBtn.classList.toggle('on',autoSync);
-  if(autoSync){[0,1].forEach(i=>{asPend[i]=!audios[i].paused});flash('AUTO SYNC: ON — kusang sync (tempo + beat) pag tumutugtog ang dalawang deck')}
-  else{[0,1].forEach(i=>{if(asAuto[i]&&lockOn[i])setLock(i,false);asAuto[i]=false});flash('AUTO SYNC: OFF')}});
-asBtn.classList.add('on');asBtn.style.fontSize='10px';asBtn.style.whiteSpace='pre-line';asBtn.style.lineHeight='1.15';
-setInterval(()=>{
-  for(let i=0;i<2;i++){const pl=!audios[i].paused;if(pl&&!asPrev[i])asPend[i]=true;asPrev[i]=pl}
-  if(!autoSync||amixBusy||bmRun||(!asPend[0]&&!asPend[1]))return;
-  for(let i=0;i<2;i++)if(audios[i].paused)asPend[i]=false;
-  if(audios[0].paused||audios[1].paused||!info[0]||!info[1]||!bpmBase[0]||!bpmBase[1])return;
-  if(window.SC&&(SC.act[0]||SC.act[1]))return;
-  let sf;if(asPend[0]&&!asPend[1])sf=0;else if(asPend[1]&&!asPend[0])sf=1;else{const g=gains();sf=g[0]>=g[1]?1:0}
-  asPend[0]=asPend[1]=false;
-  setTimeout(()=>{if(!autoSync||audios[sf].paused||audios[1-sf].paused)return;
-    setLock(sf,true);asAuto[sf]=true;flash('AUTO SYNC: Deck '+L[sf]+' ↔ '+L[1-sf])},250)},300);
-
-// ===== AUTO ALIGN: kusang inaayos ang beat (phase) ng dalawang deck pag nagka-lihis, kahit walang SYNC LOCK =====
-let autoAlign=true,aaT=0,aaN=0;
-const aaBtn=btn('AUTO\nALIGN',176,251,58,40,()=>{autoAlign=!autoAlign;aaBtn.classList.toggle('on',autoAlign);
-  flash(autoAlign?'AUTO ALIGN: ON — kusang aayusin ang beat pag nalihis':'AUTO ALIGN: OFF');if(autoAlign)aaT=0});
-aaBtn.classList.add('on');aaBtn.style.fontSize='10px';aaBtn.style.padding='0';aaBtn.style.whiteSpace='pre-line';aaBtn.style.lineHeight='1.15';
-setInterval(()=>{
-  if(!autoAlign||amixBusy||bmRun||lockOn[0]||lockOn[1])return;
-  if(audios[0].paused||audios[1].paused||!info[0]||!info[1]||!bpmBase[0]||!bpmBase[1])return;
-  if(window.SC&&(SC.act[0]||SC.act[1]))return;
-  if(performance.now()-aaT<3000)return;
-  const[m,s]=syncRoles(),T=tempoTarget(s,m);
-  const Es=bpmBase[s]*T.mu*audios[s].playbackRate,Em=bpmBase[m]*audios[m].playbackRate;
-  if(Math.abs(1-Es/Em)>.005)return; // alignment ay para lang sa magkapantay na tempo
-  const d=phaseOff(s,m,T.mu);
-  if(Math.abs(d)>.04){if(++aaN>=3){aaN=0;aaT=performance.now();const r=alignBeat(s,m,T.mu);flash('AUTO ALIGN: Deck '+L[s]+' → '+L[m]+' ('+Math.round(r*1000)+' ms)')}}else aaN=0},400);
 
 // ===== AUTO EQ ON agad + LIVE: kusang gumagalaw ang EQ sliders at level habang tumutugtog =====
 setAutoEq(true);
