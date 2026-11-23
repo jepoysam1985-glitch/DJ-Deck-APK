@@ -831,7 +831,8 @@ function setSync(i,on){
   if(on){const o=1-i;if(!bpmBase[i]||!bpmBase[o]){flash('SYNC: both decks need a BPM');return}
     if(syncOn[o])setSync(o,false);syncOn[i]=true;const T0=applyTempoMatch(i,o,true);
     if(info[i]&&info[o]&&audios[i].src&&audios[o].src&&!audios[i].paused&&!audios[o].paused){try{alignBeat(i,o,T0.mu)}catch(e){}}}
-  else{syncOn[i]=false;lockOn[i]=false}
+  else{syncOn[i]=false;lockOn[i]=false;const a=audios[i],P=window.slPos; // ibalik sa slider ang rate kung lumampas ito sa ±10%
+    if(a&&P&&Math.abs(a.playbackRate-P[i])>1e-4&&Math.abs(a.playbackRate-P[i])<.06){a.playbackRate=P[i];a.defaultPlaybackRate=P[i]}}
   syncBtn[i].classList.toggle('on',syncOn[i]);if(lkBtn[i])lkBtn[i].classList.toggle('on',lockOn[i])}
 function phaseOff(s,m,mu){const as=audios[s],am=audios[m],Lr=60/(bpmBase[m]*am.playbackRate);
   let d=beatSince(s,smoothT(s),mu)/as.playbackRate-beatSince(m,smoothT(m),1)/am.playbackRate;return d-Lr*Math.round(d/Lr)}
@@ -1018,7 +1019,9 @@ const gdBtn=btn('BEATGRID',-50,510,100,40,()=>{gdBtn._h=false;clearTimeout(gdBtn
     flash(gridOn?'BEATGRID: ON — hold the button to set beat 1 at the playhead':'BEATGRID: OFF')}}));
 gdBtn.style.fontSize='11px';gdBtn.classList.toggle('on',gridOn);
 // ===== ALIGN BEAT: ihahanay ang beat ng kabilang deck sa master deck (para pantay ang beat lines sa A at B) =====
-function alignNow(say){const m=gridDeck(),s=1-m;
+// roles: kung may deck na naka-SYNC, siya ang susunod (slave); kung wala, ang mas malakas ang master. Para hindi mabago ang tempo ng tunay na master
+function syncRoles(){if(syncOn[0]!==syncOn[1]){const s=syncOn[0]?0:1;return[1-s,s]}const m=gridDeck();return[m,1-m]}
+function alignNow(say){const[m,s]=syncRoles();
   if(!audios[0].src||!audios[1].src){if(say)flash('ALIGN BEAT: load both songs first');return}
   if(!bpmBase[0]||!bpmBase[1]||!info[0]||!info[1]){if(say)flash('ALIGN BEAT: both decks need a BPM');return}
   const T=applyTempoMatch(s,m,false);let d=0;
@@ -1084,7 +1087,7 @@ setInterval(()=>{
   if(audios[0].paused||audios[1].paused||!info[0]||!info[1]||!bpmBase[0]||!bpmBase[1])return;
   if(window.SC&&(SC.act[0]||SC.act[1]))return;
   if(performance.now()-aaT<3000)return;
-  const m=gridDeck(),s=1-m,T=tempoTarget(s,m);
+  const[m,s]=syncRoles(),T=tempoTarget(s,m);
   const Es=bpmBase[s]*T.mu*audios[s].playbackRate,Em=bpmBase[m]*audios[m].playbackRate;
   if(Math.abs(1-Es/Em)>.005)return; // alignment ay para lang sa magkapantay na tempo
   const d=phaseOff(s,m,T.mu);
