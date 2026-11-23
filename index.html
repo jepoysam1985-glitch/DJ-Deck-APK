@@ -972,6 +972,7 @@ amBtn.style.fontSize='10px';amBtn.style.padding='0';amBtn.style.whiteSpace='pre-
 const eqBtns=[0,1].map(d=>btn('EQ',58,240,72,40,()=>(eqOpen&&eqDeck===d)?closeEQ():openEQ(d),decks[d]));
 const aeBtn=btn('AUTO EQ',176,203,58,40,()=>setAutoEq(!autoEq));aeBtn.style.fontSize='10px';aeBtn.style.padding='0';
 // ===== BEATGRID: beat lines on the waveform (bold line = beat 1 of each bar) =====
+const gridLk=[false,false];
 let gridOn=true;try{gridOn=localStorage.getItem('dj_grid')!=='0'}catch(e){}
 const gridA=[null,null],gridMan=[null,null];
 function gridAnchor(i,t){const I=info[i];if(!I||!bpmBase[i])return null;
@@ -1006,10 +1007,15 @@ gdBtn.style.fontSize='11px';gdBtn.classList.toggle('on',gridOn);
 initEQ();
 setInterval(()=>{
   for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)).toFixed(1):'---';
-    if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]){const r=Math.max(.9,Math.min(1.1,tempoTarget(i,o).r));if(Math.abs(r-a.playbackRate)>.0004)setRate(i,r)}}}
+    if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]){const T=tempoTarget(i,o);let r=T.r;
+      if(lockOn[i]&&!amixBusy&&!a.paused&&!audios[o].paused&&info[i]&&info[o]&&!(window.SC&&(SC.act[i]||SC.act[o]))){const d=phaseOff(i,o,T.mu);
+        if(Math.abs(d)>.12){if(performance.now()-lockT[i]>1500){lockT[i]=performance.now();alignBeat(i,o,T.mu)}}
+        else if(Math.abs(d)>.0015)r*=1-Math.max(-.03,Math.min(.03,d*.6));
+        const lk=Math.abs(d)<.006;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' ↔ '+L[o]);gridLk[i]=lk}
+      r=Math.max(.9,Math.min(1.1,r));if(Math.abs(r-a.playbackRate)>.0002)setRate(i,r)}}}
   for(let i=0;i<2;i++){if(!lockOn[i]||!syncOn[i]||performance.now()-lockT[i]<2500)continue;const o=1-i;
     if(audios[i].paused||audios[o].paused||!info[i]||!info[o]||!bpmBase[i]||!bpmBase[o])continue;
-    lockT[i]=performance.now();const mu=tempoTarget(i,o).mu;if(Math.abs(phaseOff(i,o,mu))>.03)alignBeat(i,o,mu)}
+    lockT[i]=performance.now();const mu=tempoTarget(i,o).mu;if(Math.abs(phaseOff(i,o,mu))>.12)alignBeat(i,o,mu)}
   amixCheck();
   const t=performance.now()<flashUntil?flashMsg:idleMsg;stat.textContent=t;stat.style.opacity=t?1:0;
   if(eqOpen)updEqInfo()},250);
@@ -1019,7 +1025,7 @@ setInterval(()=>{if(!autoBM||amixBusy||bmRun)return;
   if(audios[0].paused||audios[1].paused||!info[0]||!info[1]||!bpmBase[0]||!bpmBase[1])return;
   if(window.SC&&(SC.act[0]||SC.act[1]))return;if(lockOn[0]||lockOn[1])return;
   let sf;if(syncOn[0]!==syncOn[1])sf=syncOn[0]?0:1;else{const g=gains();sf=g[0]>=g[1]?1:0}
-  bmRun=true;try{setLock(sf,true);flash('BEAT MATCH: Deck '+L[sf]+' ↔ '+L[1-sf])}finally{bmRun=false}},700);
+  bmRun=true;try{setLock(sf,true);flash('BEAT MATCH: Deck '+L[sf]+' ↔ '+L[1-sf])}finally{bmRun=false}},400);
 
 // ===== QUANTIZE: ang hot cue ay kumakapit sa pinakamalapit na beat =====
 var quantizeOn=true;try{quantizeOn=localStorage.getItem('dj_quantize')!=='0'}catch(e){}
