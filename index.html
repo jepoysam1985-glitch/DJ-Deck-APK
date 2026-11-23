@@ -778,6 +778,7 @@ async function analyzeCore(d,sr,live){
 async function djAnalyze(i,buf,t){
   try{const r=await analyzeCore(buf.getChannelData(0),buf.sampleRate,()=>t===tok[i]);
     if(!r||t!==tok[i])return;info[i]=r;if(r.bpm){bpmBase[i]=r.bpm;window.libBpm&&libBpm(i,r.bpm)}
+    if(r.bpm){try{const gf=fitGrid(r);if(gf){r.g=gf;if(gf.ok)bpmBase[i]=gf.bpm}}catch(e2){console.error(e2)}}
     r.intro=r.bpm?Math.max(0,r.intro-.05-beatSince(i,r.intro,1)):r.intro;
     flash(`Deck ${L[i]}: ${r.bpm?r.bpm+' BPM':'no BPM found (tap it)'} · ready`);
     if(autoEq)computeAuto();updEqInfo();autoSyncCheck(i)}
@@ -785,7 +786,22 @@ async function djAnalyze(i,buf,t){
 }
 
 // ---- beat grid / sync / beat match ----
+// precise beat grid fit: folds the onset envelope at tiny tempo steps -> exact BPM + phase for the whole song
+function fitGrid(r){const e=r.env,R=r.rate,M=e.length,b0=r.bpm;if(!b0||M<R*20)return null;
+  const W=Math.min(M,Math.floor(120*R)),s0=Math.floor((M-W)/2),NB=256;
+  const fold=(per,a,b)=>{const h=new Float64Array(NB);for(let x=a;x<b;x++){const v=e[x];if(v<=0)continue;const q=((x/per)%1)*NB,i0=q|0,f=q-i0;h[i0]+=v*(1-f);h[(i0+1)%NB]+=v*f}
+    const o=new Float64Array(NB);for(let k=0;k<NB;k++)o[k]=(h[(k+NB-1)%NB]+2*h[k]+h[(k+1)%NB])/4;return o};
+  const top=h=>{let bi=0,bv=-1;for(let k=0;k<NB;k++)if(h[k]>bv){bv=h[k];bi=k}return[bi,bv]};
+  let bB=b0,bI=0,bV=-1;
+  const tryB=bp=>{const per=R*60/bp,t=top(fold(per,s0,s0+W));if(t[1]>bV){bV=t[1];bB=bp;bI=t[0]}};
+  for(let k=-30;k<=30;k++)tryB(b0*(1+k*.0002));
+  const c=bB;for(let k=-4;k<=4;k++)tryB(c*(1+k*.00005));
+  const per=R*60/bB,perS=60/bB,a0=bI/NB*per/R,seg=Math.floor(W/4);let okc=0;
+  for(let k=0;k<4;k++){const t=top(fold(per,s0+k*seg,s0+(k+1)*seg));let d=Math.abs(t[0]-bI)/NB;d=Math.min(d,1-d);if(d*perS<.03)okc++}
+  return{bpm:bB,a0,ok:okc>=3}}
+const gOK=(I,i)=>I&&I.g&&I.g.ok&&Math.abs(bpmBase[i]-I.g.bpm)<5e-4;
 function beatSince(i,t,mu){const I=info[i];if(!I||!bpmBase[i])return 0;
+  if(gOK(I,i)){const per=60/(bpmBase[i]*mu);return((t-I.g.a0)%per+per)%per}
   const per=60/(bpmBase[i]*mu),R=I.rate,P=per*R,e=I.env,ws=Math.max(0,Math.min(t-4,I.dur-8));
   const a=Math.floor(ws*R),b=Math.min(e.length-2,Math.floor((ws+8)*R));let bq=0,bs=-1;
   for(let q=0;q<P;q+=.5){let s=0;for(let x=a+q;x<b;x+=P){const xi=x|0,f=x-xi;s+=e[xi]*(1-f)+e[xi+1]*f}if(s>bs){bs=s;bq=q}}
@@ -960,10 +976,11 @@ let gridOn=true;try{gridOn=localStorage.getItem('dj_grid')!=='0'}catch(e){}
 const gridA=[null,null],gridMan=[null,null];
 function gridAnchor(i,t){const I=info[i];if(!I||!bpmBase[i])return null;
   const m=gridMan[i];if(m&&m.tok===tok[i])return m.t;
+  if(gOK(I,i))return I.g.a0;
   const per=60/bpmBase[i];let g=gridA[i];
   if(!g||g.tok!==tok[i]||g.bpm!==bpmBase[i]||Math.abs(t-g.at)>1.5){
     const na=t-beatSince(i,t,1);
-    if(g&&g.tok===tok[i]&&g.bpm===bpmBase[i]){let d=((na-g.a)%per+per)%per;if(d>per/2)d-=per;if(Math.abs(d)>=.04)g.a=na;g.at=t}
+    if(g&&g.tok===tok[i]&&g.bpm===bpmBase[i]){let d=((na-g.a)%per+per)%per;if(d>per/2)d-=per;if(Math.abs(d)>=.006)g.a=na;g.at=t}
     else g=gridA[i]={a:na,at:t,tok:tok[i],bpm:bpmBase[i]}}
   return g.a}
 window.gridDraw=function(g,w,h,i,t,nb){
