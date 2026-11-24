@@ -656,12 +656,12 @@ function applyTempoMatch(s,m,say){const T=tempoTarget(s,m);let r=T.r;const out=r
   return{mu:T.mu,out}}
 function barSince(i,t,mu){const I=info[i];if(!I||!bpmBase[i])return 0;const F=window.gridAnchorRef,a=F?F(i,t):null;if(a===null||a===undefined||!isFinite(a))return beatSince(i,t,mu);
   const per=60/(bpmBase[i]*mu),gm=window.gridManRef&&window.gridManRef[i],ref=(gm&&gm.tok===tok[i])?gm.t:(I.intro||0),n0=Math.round((ref-a)/per),bl=4*per;return((t-(a+n0*per))%bl+bl)%bl} // oras mula sa puting linya (beat 1 ng bar), pareho sa nakikita sa wave
-async function settleAlign(s,m,mu){for(let n=0;n<3;n++){await sleep(n?700:250);if(!syncOn[s])return;if(audios[s].paused||audios[m].paused)return;let d;try{d=alignBeat(s,m,mu)}catch(e){return}if(Math.abs(d)<.012)return}}
+async function settleAlign(s,m,mu){for(let n=0;n<6;n++){await sleep(n?600:250);if(!syncOn[s])return;if(audios[s].paused||audios[m].paused)return;let d;try{d=alignBeat(s,m,mu)}catch(e){return}if(Math.abs(d)<.003)return}}
 function alignBeat(s,m,mu){const as=audios[s],am=audios[m],effM=bpmBase[m]*am.playbackRate,Lr=60/effM;
   const tS=smoothT(s),tM=smoothT(m);
   const bar=mu===1&&!!window.gridAnchorRef,F=bar?barSince:beatSince,Lq=bar?4*Lr:Lr; // mu=1: itugma ang puting linya (bar), hindi lang ang beat
   let d=F(s,tS,mu)/as.playbackRate-F(m,tM,1)/am.playbackRate;d-=Lq*Math.round(d/Lq);
-  if(Math.abs(d)>=.004)as.currentTime=Math.max(0,tS-d*as.playbackRate);return d}
+  if(Math.abs(d)>=.002)as.currentTime=Math.max(0,tS-d*as.playbackRate);return d}
 function setSync(i,on){
   if(on){const o=1-i;if(!bpmBase[i]||!bpmBase[o]){flash('SYNC: both decks need a BPM');return}
     if(syncOn[o])setSync(o,false);syncOn[i]=true;const T0=applyTempoMatch(i,o,true);
