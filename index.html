@@ -865,9 +865,9 @@ window.gridDraw=function(g,w,h,i,t,nb,rt){rt=rt||1;
 function gridDeck(){const pl=[0,1].filter(i=>audios[i]&&audios[i].src&&!audios[i].paused);
   if(pl.length===2){const g=gains();return g[0]>=g[1]?0:1}return pl.length?pl[0]:(audios[0]&&audios[0].src?0:1)}
 const gdBtn=btn('BEATGRID',-50,510,100,40,()=>{gdBtn._h=false;clearTimeout(gdBtn._t);
-  gdBtn._t=setTimeout(()=>{gdBtn._h=true;const d=gridDeck();
+  const d0=gridDeck(),t0=smoothT(d0);gdBtn._t=setTimeout(()=>{gdBtn._h=true;const d=d0;
     if(!info[d]||!bpmBase[d]){flash('BEATGRID: Deck '+L[d]+' has no BPM yet');return}
-    gridMan[d]={t:smoothT(d),tok:tok[d]};gridOn=true;gdBtn.classList.add('on');try{localStorage.setItem('dj_grid','1')}catch(e){}
+    gridMan[d]={t:t0,tok:tok[d]};gridOn=true;gdBtn.classList.add('on');try{localStorage.setItem('dj_grid','1')}catch(e){}
     flash('BEATGRID: Deck '+L[d]+' — beat 1 set here (loads a new song = auto grid again)',4500)},500)});
 ['pointerup','pointercancel'].forEach(ev=>gdBtn.addEventListener(ev,()=>{clearTimeout(gdBtn._t);
   if(ev==='pointerup'&&!gdBtn._h){gridOn=!gridOn;gdBtn.classList.toggle('on',gridOn);try{localStorage.setItem('dj_grid',gridOn?'1':'0')}catch(e){}
