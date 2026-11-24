@@ -654,14 +654,18 @@ function applyRate(i,r){const a=audios[i],P=window.slPos||(window.slPos=[1,1]),r
 function applyTempoMatch(s,m,say){const T=tempoTarget(s,m);let r=T.r;const out=r<.85||r>1.15;r=Math.max(.85,Math.min(1.15,r));applyRate(s,r);
   if(say)flash(out?`Tempo is over ±15% (${bpmBase[s]} vs ${bpmBase[m]} BPM)`:`Deck ${L[s]} → ${(bpmBase[s]*T.mu*r).toFixed(1)} BPM`);
   return{mu:T.mu,out}}
+function barSince(i,t,mu){const I=info[i];if(!I||!bpmBase[i])return 0;const F=window.gridAnchorRef,a=F?F(i,t):null;if(a===null||a===undefined||!isFinite(a))return beatSince(i,t,mu);
+  const per=60/(bpmBase[i]*mu),gm=window.gridManRef&&window.gridManRef[i],ref=(gm&&gm.tok===tok[i])?gm.t:(I.intro||0),n0=Math.round((ref-a)/per),bl=4*per;return((t-(a+n0*per))%bl+bl)%bl} // oras mula sa puting linya (beat 1 ng bar), pareho sa nakikita sa wave
+async function settleAlign(s,m,mu){for(let n=0;n<3;n++){await sleep(n?700:250);if(!syncOn[s])return;if(audios[s].paused||audios[m].paused)return;let d;try{d=alignBeat(s,m,mu)}catch(e){return}if(Math.abs(d)<.012)return}}
 function alignBeat(s,m,mu){const as=audios[s],am=audios[m],effM=bpmBase[m]*am.playbackRate,Lr=60/effM;
   const tS=smoothT(s),tM=smoothT(m);
-  let d=beatSince(s,tS,mu)/as.playbackRate-beatSince(m,tM,1)/am.playbackRate;d-=Lr*Math.round(d/Lr);
-  as.currentTime=Math.max(0,tS-d*as.playbackRate);return d}
+  const bar=mu===1&&!!window.gridAnchorRef,F=bar?barSince:beatSince,Lq=bar?4*Lr:Lr; // mu=1: itugma ang puting linya (bar), hindi lang ang beat
+  let d=F(s,tS,mu)/as.playbackRate-F(m,tM,1)/am.playbackRate;d-=Lq*Math.round(d/Lq);
+  if(Math.abs(d)>=.004)as.currentTime=Math.max(0,tS-d*as.playbackRate);return d}
 function setSync(i,on){
   if(on){const o=1-i;if(!bpmBase[i]||!bpmBase[o]){flash('SYNC: both decks need a BPM');return}
     if(syncOn[o])setSync(o,false);syncOn[i]=true;const T0=applyTempoMatch(i,o,true);
-    if(info[i]&&info[o]&&audios[i].src&&audios[o].src&&!audios[i].paused&&!audios[o].paused){try{alignBeat(i,o,T0.mu)}catch(e){}}}
+    if(info[i]&&info[o]&&audios[i].src&&audios[o].src&&!audios[i].paused&&!audios[o].paused){try{alignBeat(i,o,T0.mu);settleAlign(i,o,T0.mu)}catch(e){}}}
   else{syncOn[i]=false;lockOn[i]=false;lockTrim[i]=1;lastR[i]=0;const a=audios[i],P=window.slPos; // ibalik sa slider ang rate kung lumampas ito sa ±10%
     if(a&&P&&Math.abs(a.playbackRate-P[i])>1e-4&&Math.abs(a.playbackRate-P[i])<.06){a.playbackRate=P[i];a.defaultPlaybackRate=P[i]}}
   syncBtn[i].classList.toggle('on',syncOn[i]);if(lkBtn[i])lkBtn[i].classList.toggle('on',lockOn[i])}
@@ -853,6 +857,7 @@ function gridAnchor(i,t){const I=info[i];if(!I||!bpmBase[i])return null;
     if(g&&g.tok===tok[i]&&g.bpm===bpmBase[i]){let d=((na-g.a)%per+per)%per;if(d>per/2)d-=per;if(Math.abs(d)>=.006)g.a=na;g.at=t}
     else g=gridA[i]={a:na,at:t,tok:tok[i],bpm:bpmBase[i]}}
   return g.a}
+window.gridAnchorRef=gridAnchor;
 window.gridDraw=function(g,w,h,i,t,nb,rt){rt=rt||1;
   if(!gridOn)return;const I=info[i];if(!I||!bpmBase[i])return;
   const a=gridAnchor(i,t);if(a===null||!isFinite(a))return;
