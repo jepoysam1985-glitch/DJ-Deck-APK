@@ -175,10 +175,10 @@ cfg.forEach((d,i)=>{
   let u0n=0;loaders[i]=f=>{const tk=++u0n;titles[i]=f.name.replace(/\.[^.]+$/,'');covers[i]=null;metas[i]={t:titles[i],a:''};window.libCover&&libCover(i,f);window.libTags&&libTags(f).then(o=>{if(o&&o.t&&tk===u0n){metas[i]={t:o.t,a:o.a||''};titles[i]=(o.a?o.a+' - ':'')+o.t;window.nowSync&&nowSync(i)}}).catch(()=>{});ensureCtx(i);playB.classList.remove('on');if(audio.dataset.u)URL.revokeObjectURL(audio.dataset.u);const u=URL.createObjectURL(f);audio.dataset.u=u;audio.src=u;nm.textContent=f.name;cuePoint=0;djReset(i);loadWave(i,f)};
   file.onchange=()=>{const f=file.files[0];if(!f)return;loaders[i](f);window.libHist&&libHist(f.name,i);file.value=''};
   playB.addEventListener('pointerdown',()=>{if(!audio.src)return;
-    if(audio.paused){audio.play();playB.classList.add('on')}else{audio.pause();playB.classList.remove('on')}});
+    if(audio.paused){Promise.resolve(audio.play()).catch(()=>{});playB.classList.add('on')}else{audio.pause();playB.classList.remove('on')}});
   cueB.addEventListener('pointerdown',()=>{if(!audio.src)return;cueB.classList.add('on');
     if(!audio.paused){audio.pause();audio.currentTime=cuePoint;playB.classList.remove('on')}
-    else{cuePoint=audio.currentTime;held=true;audio.play()}});
+    else{cuePoint=audio.currentTime;held=true;Promise.resolve(audio.play()).catch(()=>{})}});
   const cueUp=()=>{cueB.classList.remove('on');if(held){audio.pause();audio.currentTime=cuePoint;held=false}};
   cueB.addEventListener('pointerup',cueUp);cueB.addEventListener('pointercancel',cueUp);
   const ang=e=>{const r=jog.getBoundingClientRect();return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))*180/Math.PI};
