@@ -29,8 +29,8 @@ public class RtmpService extends Service implements ConnectChecker {
       stopSelf();
       return START_NOT_STICKY;
     }
-    startFg();
     try {
+      startFg();
       begin(in);
     } catch (Exception e) {
       RtmpPlugin.emit("error", e.getMessage() == null ? e.toString() : e.getMessage());
