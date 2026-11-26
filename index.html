@@ -462,7 +462,7 @@ let wfN=0,wfForce=false;const wfCT=[-1,-1];
   wfN++;let wfGo=wfN<3||wfForce;wfForce=false;
   if(!wfGo){for(let i=0;i<2;i++){const a=audios[i];if(a&&(!a.paused||a.currentTime!==wfCT[i])){wfGo=true;break}}}
   for(let i=0;i<2;i++){const a=audios[i];wfCT[i]=a?a.currentTime:0}
-  if(wfGo||wfN%6===0){drawTop(topC[0],0);drawTop(topC[1],1)}
+  if((wfGo||wfN%6===0)&&!(window.__padsOpen&&wfN%2)){drawTop(topC[0],0);drawTop(topC[1],1)}
   if(wfN%4===0)updLbl();
   requestAnimationFrame(waveLoop)})();
 
@@ -898,22 +898,23 @@ setInterval(()=>{
   const t=performance.now()<flashUntil?flashMsg:idleMsg;stat.textContent=t;stat.style.opacity=t?1:0;
   if(eqOpen)updEqInfo()},250);
 
-// ===== [PORT ng phaseStep() ng index.html] beat lock: ang wave beatgrid mismo ang sinusunod, ~25x bawat segundo =====
-// lampas 60 ms ang layo -> seek sa pinakamalapit na bar line; mas maliit -> unti-unting trim ng bilis (hanggang ±2%, gain .4 bawat beat)
-setInterval(()=>{
+// ===== [PORT ng phaseStep() ng index.html] beat lock: ang wave beatgrid mismo ang sinusunod =====
+// pinagaan: 10x/seg lang, bihirang galawin ang playbackRate, at sa PADS MODE ay seek-lang (mabigat ang audio doon)
+let lkTick=0;
+setInterval(()=>{lkTick++;const pads=!!window.__padsOpen;if(pads&&lkTick%3)return;
   for(let i=0;i<2;i++){const o=1-i,a=audios[i],b=audios[o];
     if(!a||!b||!syncOn[i]||!lockOn[i])continue;
     const go=!amixBusy&&!a.paused&&!b.paused&&!a._rh&&info[i]&&info[o]&&bpmBase[i]&&bpmBase[o]&&lastR[i]&&!(window.SC&&(SC.act[i]||SC.act[o]));
     if(!go){lockTrim[i]=1;lockD[i]=NaN;continue}
-    let tr=1;
+    let tr=pads?(lockTrim[i]||1):1;
     try{const T=tempoTarget(i,o),d=phaseOff(i,o,T.mu);
-      if(Math.abs(d)>.06){if(performance.now()-lockT[i]>400){lockT[i]=performance.now();lockD[i]=NaN;alignBeat(i,o,T.mu)}}
-      else if(Math.abs(d)>.001){const Lr=60/(bpmBase[o]*b.playbackRate),df=d/Lr;tr=1-Math.max(-.02,Math.min(.02,df*.4))}
+      if(Math.abs(d)>(pads?.12:.08)){if(performance.now()-lockT[i]>(pads?1500:800)){lockT[i]=performance.now();lockD[i]=NaN;alignBeat(i,o,T.mu)}}
+      else if(!pads){if(Math.abs(d)>.003){const Lr=60/(bpmBase[o]*b.playbackRate),df=d/Lr;tr=Math.round((1-Math.max(-.02,Math.min(.02,df*.4)))*1000)/1000}}
       const lk=Math.abs(d)<.006;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' \u2194 '+L[o]);gridLk[i]=lk;
     }catch(e){}
     lockTrim[i]=tr;const eff=lastR[i]*tr;
-    if(Math.abs(a.playbackRate-eff)>1e-5){a.playbackRate=eff;a.defaultPlaybackRate=eff}}
-},40);
+    if(Math.abs(a.playbackRate-eff)>=.0009){a.playbackRate=eff;a.defaultPlaybackRate=eff}}
+},100);
 
 // ===== BEAT MATCH ACTIVE: pag tumutugtog ang dalawang deck, kusang tempo + beat lock =====
 setInterval(()=>{if(!autoBM||amixBusy||bmRun)return;
@@ -1819,15 +1820,15 @@ function grain(i,a,b,real){const B=SCbuf[i],c=chain[i];if(!B||!c||!ctx)return;
   s.connect(g);g.connect(c.eq[0]);s.start(now);s.stop(now+len+.02);
   const o=SC.cur[i];if(o){o.g.gain.cancelScheduledValues(now);o.g.gain.setValueAtTime(o.g.gain.value,now);o.g.gain.linearRampToValueAtTime(0,now+.006)}SC.cur[i]={s,g}}
 // ===== [PORT ng scratch ng index.html] tuloy-tuloy na tunog: ang bilis at direksyon ng daliri ang nagtutulak ng playback rate (forward o reversed buffer) =====
-const SCrev=[null,null],SCv=[null,null];SC.sv=[0,0];SC.ti=[null,null];SC.vt=[null,null];
-function scRev(i){const B=SCbuf[i];if(!B||!ctx)return null;let r=SCrev[i];if(r&&r.src===B)return r.b;
-  const rb=ctx.createBuffer(B.numberOfChannels,B.length,B.sampleRate);
-  for(let c=0;c<B.numberOfChannels;c++){const x=B.getChannelData(c),o=rb.getChannelData(c),n=x.length;for(let k=0;k<n;k++)o[n-1-k]=x[k]}
-  SCrev[i]={src:B,b:rb};return rb}
+const SCv=[null,null];SC.sv=[0,0];SC.ti=[null,null];SC.vt=[null,null];
+function scRev(i,p){const B=SCbuf[i];if(!B||!ctx)return null;const sr=B.sampleRate,e=Math.min(B.length,Math.floor(p*sr)),st=Math.max(0,e-Math.floor(20*sr)),n=e-st;if(n<64)return null;
+  const rb=ctx.createBuffer(B.numberOfChannels,n,sr);
+  for(let c=0;c<B.numberOfChannels;c++){const x=B.getChannelData(c),o=rb.getChannelData(c);for(let k=0;k<n;k++)o[k]=x[e-1-k]}
+  return rb}
 function scStop(i){const v=SCv[i];if(!v)return;SCv[i]=null;
   try{const now=ctx.currentTime;v.g.gain.cancelScheduledValues(now);v.g.gain.setValueAtTime(v.g.gain.value,now);v.g.gain.linearRampToValueAtTime(0,now+.008);v.s.stop(now+.02)}catch(e){}}
 function scGo(i,dir){scStop(i);const B=SCbuf[i],c=chain[i];if(!B||!c||!ctx)return;
-  const bf=dir>0?B:scRev(i);if(!bf)return;const o=dir>0?SC.p[i]:B.duration-SC.p[i];if(o<0||o>=bf.duration-.02)return;
+  const bf=dir>0?B:scRev(i,SC.p[i]);if(!bf)return;const o=dir>0?SC.p[i]:0;if(o<0||o>=bf.duration-.02)return;
   const s=ctx.createBufferSource(),g=ctx.createGain();s.buffer=bf;g.gain.value=0;g.gain.setTargetAtTime(1,ctx.currentTime,.004);
   s.connect(g);g.connect(c.eq[0]);s.onended=()=>{try{s.disconnect();g.disconnect()}catch(e){}};s.start(0,o);SCv[i]={s,g,dir}}
 function scUpd(i){if(!SC.act[i]||!ctx)return;if(performance.now()-SC.t[i]>50)SC.sv[i]*=.5;
@@ -1835,7 +1836,7 @@ function scUpd(i){if(!SC.act[i]||!ctx)return;if(performance.now()-SC.t[i]>50)SC.
   if(m>.06){let v=SCv[i];if(!v||v.dir!==dir){scGo(i,dir);v=SCv[i]}if(v)v.s.playbackRate.setTargetAtTime(Math.min(4,m),ctx.currentTime,.012)}else scStop(i)}
 SC.down=i=>{const a=audios[i];if(!a||!a.src)return;SC.act[i]=true;SC.was[i]=!a.paused;SC.vt[i]=SC.was[i]?{t:performance.now(),p:a.currentTime}:null;
   if(SC.was[i])a.pause();SC.p[i]=a.currentTime;SC.t[i]=performance.now();SC.sv[i]=0;if(ctx&&ctx.state==='suspended')ctx.resume();
-  try{scRev(i)}catch(e){}clearInterval(SC.ti[i]);SC.ti[i]=setInterval(()=>scUpd(i),25)};
+  clearInterval(SC.ti[i]);SC.ti[i]=setInterval(()=>scUpd(i),25)};
 SC.move=(i,dt)=>{const a=audios[i],n=performance.now(),real=Math.max(.008,(n-SC.t[i])/1000);SC.t[i]=n;
   const p0=SC.p[i],p1=Math.max(0,Math.min(a.duration||1e9,p0+dt));if(p1===p0)return;SC.p[i]=p1;a.currentTime=p1;
   SC.sv[i]=SC.sv[i]*.5+(dt/real)*.5};
@@ -2160,9 +2161,9 @@ const smpLB=btn('LOAD',-374,76,176,36,()=>{smpLoad=!smpLoad;if(smpLoad)smpClr=fa
   smpRecB=btn('REC',190,76,184,36,()=>smpRecToggle(),rt),smpBtns=[smpLB,smpCB,smpHB,smpRecB];
 smpBtns.forEach(b=>b.style.display='none');
 function smpSync(){smpLB.classList.toggle('on',smpLoad);smpCB.classList.toggle('on',smpClr);smpHB.classList.toggle('on',smpHold);smpHB.textContent=smpHold?'HOLD':'ONE-SHOT'}
-function openPads(d){if(eqOpen)closeEQ();if(cueOpen)closeCue();padsOpen=true;padDeck=d;fxDeckSel=d;fxCtlSync();bk.style.display='block';ttl.textContent='PADS · DECK '+L[d];
+function openPads(d){if(eqOpen)closeEQ();if(cueOpen)closeCue();padsOpen=window.__padsOpen=true;padDeck=d;fxDeckSel=d;fxCtlSync();bk.style.display='block';ttl.textContent='PADS · DECK '+L[d];
   padBtn.forEach((b,i)=>b.classList.toggle('on',i===d));setMode(padMode)}
-function closePads(){fxEnd();endRoll(0);endRoll(1);padsOpen=false;bk.style.display='none';padBtn.forEach(b=>b.classList.remove('on'))}
+function closePads(){fxEnd();endRoll(0);endRoll(1);padsOpen=window.__padsOpen=false;bk.style.display='none';padBtn.forEach(b=>b.classList.remove('on'))}
 const padBtn=[0,1].map(d=>{const b=btn('PADS MODE',140,190,72,40,()=>(padsOpen&&padDeck===d)?closePads():openPads(d),decks[d]);b.style.fontSize='11px';return b});
 })();
 
