@@ -335,25 +335,29 @@ function makeFx(){
   const rS=g(),cv=c.createConvolver(),rT=c.createBiquadFilter(),rO=g();cv.buffer=revBuf;rS.gain.value=0;rT.type='lowpass';rT.frequency.value=6000;rO.gain.value=1.3;
   filt.connect(rS);rS.connect(cv);cv.connect(rT);rT.connect(rO);rO.connect(out);
   const fS=g(),fd=c.createDelay(.05),fo=c.createOscillator(),fdep=g(),fO=g(),fb2=g();fd.delayTime.value=.003;fo.frequency.value=.5;fdep.gain.value=.002;fS.gain.value=0;fO.gain.value=.8;fb2.gain.value=.5;
-  fo.connect(fdep);fdep.connect(fd.delayTime);fo.start();filt.connect(fS);fS.connect(fd);fd.connect(fO);fO.connect(out);fd.connect(fb2);fb2.connect(fd);
+  fdep.connect(fd.delayTime);fo.start();filt.connect(fS);fS.connect(fd);fd.connect(fO);fO.connect(out);fd.connect(fb2);fb2.connect(fd);
   // ===== EXTRA FX: BITCRUSH / PHASER / GATE / AUTOWAH / TREMOLO / RINGMOD / SIREN =====
   const MX=()=>{const v=window.fxMix;return v==null?1:v},LQ=[4,2,1,.5,.25];let api=null;
   const beatRate=(x,lo,hi,lst)=>api&&api.q&&api.q.per?1/(api.q.per*lst[Math.min(lst.length-1,Math.floor(x*lst.length))]):lo+x*(hi-lo);
   const bc=c.createWaveShaper(),bS=g();bS.gain.value=0;filt.connect(bc);bc.connect(bS);bS.connect(out);let bBits=0;
   const crush=b=>{if(b===bBits)return;bBits=b;const n=4096,cur=new Float32Array(n),lv=Math.pow(2,b-1);for(let i=0;i<n;i++)cur[i]=Math.round((i/(n-1)*2-1)*lv)/lv;bc.curve=cur};crush(6);
   const pS=g(),pO=g(),aps=[0,1,2,3].map(()=>{const a=c.createBiquadFilter();a.type='allpass';a.frequency.value=1200;a.Q.value=.9;return a}),po=c.createOscillator(),pd=g();
-  pS.gain.value=0;pO.gain.value=1;po.frequency.value=.4;pd.gain.value=600;po.connect(pd);aps.forEach(a=>pd.connect(a.frequency));po.start();
+  pS.gain.value=0;pO.gain.value=1;po.frequency.value=.4;pd.gain.value=600;aps.forEach(a=>pd.connect(a.frequency));po.start();
   {let n=pS;filt.connect(pS);aps.forEach(a=>{n.connect(a);n=a});n.connect(pO);pO.connect(out)}
   let gAct=false,gx=.5,gy=.5,gTm=null;
   const gLoop=()=>{if(!gAct)return;const per=1/beatRate(gx,2,16,[1,.5,.25,.125,.0625]),open=per*(1-gy*.85),t=now();dry.gain.cancelScheduledValues(t);dry.gain.setTargetAtTime(1,t,.003);dry.gain.setTargetAtTime(1-MX(),t+open,.003);gTm=setTimeout(gLoop,per*1000)};
   const wS=g(),wBP=c.createBiquadFilter(),wo=c.createOscillator(),wd=g();wBP.type='bandpass';wBP.Q.value=5;wBP.frequency.value=900;wS.gain.value=0;wo.frequency.value=1;wd.gain.value=600;
-  wo.connect(wd);wd.connect(wBP.frequency);wo.start();filt.connect(wBP);wBP.connect(wS);wS.connect(out);
-  const to=c.createOscillator(),tD=g();to.frequency.value=5;tD.gain.value=0;to.connect(tD);tD.connect(dry.gain);to.start();
-  const rg=g(),rO2=g(),ro=c.createOscillator();rg.gain.value=0;ro.frequency.value=300;ro.connect(rg.gain);ro.start();rO2.gain.value=0;filt.connect(rg);rg.connect(rO2);rO2.connect(out);
-  const so=c.createOscillator(),sl=c.createOscillator(),sld=g(),sG=g();so.type='sawtooth';so.frequency.value=600;sl.frequency.value=5;sld.gain.value=0;sG.gain.value=0;sl.connect(sld);sld.connect(so.frequency);so.connect(sG);sG.connect(out);so.start();sl.start();
+  wd.connect(wBP.frequency);wo.start();filt.connect(wBP);wBP.connect(wS);wS.connect(out);
+  const to=c.createOscillator(),tD=g();to.frequency.value=5;tD.gain.value=0;tD.connect(dry.gain);to.start();
+  const rg=g(),rO2=g(),ro=c.createOscillator();rg.gain.value=0;ro.frequency.value=300;ro.start();rO2.gain.value=0;filt.connect(rg);rg.connect(rO2);rO2.connect(out);
+  const so=c.createOscillator(),sl=c.createOscillator(),sld=g(),sG=g();so.type='sawtooth';so.frequency.value=600;sl.frequency.value=5;sld.gain.value=0;sG.gain.value=0;sl.connect(sld);sld.connect(so.frequency);sG.connect(out);so.start();sl.start();
+  // [PERF] kumokonekta lang ang LFO habang gumagana ang effect; idinidiskonekta 0.6s matapos bitawan
+  const MODS={flanger:{p:[fo,fdep]},phaser:{p:[po,pd]},autowah:{p:[wo,wd]},tremolo:{p:[to,tD]},ringmod:{p:[ro,rg.gain]},siren:{p:[so,sG]}},modTm={};
+  const modOn=m=>{const q=MODS[m];if(!q)return;clearTimeout(modTm[m]);if(!q.on){try{q.p[0].connect(q.p[1])}catch(e){}q.on=true}};
+  const modOff=m=>{const q=MODS[m];if(!q)return;clearTimeout(modTm[m]);modTm[m]=setTimeout(()=>{if(q.on){try{q.p[0].disconnect(q.p[1])}catch(e){}q.on=false}},600)};
   let ftm=null;
   api={in:inn,out,q:null,
-    start(m,x,y){const mx=MX();if(m==='filter')clearTimeout(ftm);else if(m==='echo')ramp(eS.gain,mx);else if(m==='reverb')ramp(rS.gain,mx);else if(m==='flanger')ramp(fS.gain,mx);
+    start(m,x,y){modOn(m);const mx=MX();if(m==='filter')clearTimeout(ftm);else if(m==='echo')ramp(eS.gain,mx);else if(m==='reverb')ramp(rS.gain,mx);else if(m==='flanger')ramp(fS.gain,mx);
       else if(m==='bitcrush'){ramp(bS.gain,mx);ramp(dry.gain,1-.9*mx)}else if(m==='phaser')ramp(pS.gain,mx);
       else if(m==='gate'){gAct=true;gx=x==null?.5:x;gy=y==null?.5:y;clearTimeout(gTm);const w=api.q&&api.q.wait||0;if(w>0)gTm=setTimeout(gLoop,w*1000);else gLoop()}
       else if(m==='autowah'){ramp(wS.gain,2*mx);ramp(dry.gain,1-.65*mx)}else if(m==='ringmod'){ramp(rO2.gain,mx);ramp(dry.gain,1-.7*mx)}else if(m==='siren')ramp(sG.gain,.18*mx)},
@@ -369,7 +373,7 @@ function makeFx(){
       else if(m==='tremolo'){ramp(to.frequency,beatRate(x,1,16,LQ));const d=y*mx;ramp(tD.gain,d/2);ramp(dry.gain,1-d/2)}
       else if(m==='ringmod'){ramp(ro.frequency,30*Math.pow(70,x));ramp(rO2.gain,1.4*(.4+.6*y)*mx);ramp(dry.gain,1-.7*mx)}
       else if(m==='siren'){ramp(so.frequency,200*Math.pow(12,x));ramp(sld.gain,y*300);ramp(sG.gain,.18*mx)}},
-    end(m){
+    end(m){modOff(m);
       if(m==='filter'){ramp(filt.frequency,filt.type==='lowpass'?20000:20,.04);ramp(filt.Q,.7,.04);clearTimeout(ftm);ftm=setTimeout(()=>{filt.type='allpass'},400)}
       else if(m==='echo'){ramp(eS.gain,0,.02);ramp(fb.gain,.45,.1)}
       else if(m==='reverb')ramp(rS.gain,0,.02);
@@ -892,7 +896,7 @@ gdBtn.style.fontSize='11px';gdBtn.classList.toggle('on',gridOn);
 initEQ();
 setInterval(()=>{
   for(let i=0;i<2;i++){const a=audios[i];bpmSp[i].textContent=bpmBase[i]?(bpmBase[i]*(a?a.playbackRate:1)/(lockTrim[i]||1)).toFixed(1):'---';
-    if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]&&!(a&&a._rh)){const T=tempoTarget(i,o);let r=T.r,tr=(lockOn[i]&&lockTrim[i])?lockTrim[i]:1;
+    if(syncOn[i]){const o=1-i;if(bpmBase[o]&&bpmBase[i]&&!(a&&a._rh)&&!(audios[o]&&audios[o]._rh)){const T=tempoTarget(i,o);let r=T.r,tr=(lockOn[i]&&lockTrim[i])?lockTrim[i]:1;
       r=Math.max(.85,Math.min(1.15,r));if(Math.abs(r-lastR[i])>1e-5){applyRate(i,r);lastR[i]=r}const eff=r*tr;if(a&&Math.abs(a.playbackRate-eff)>1e-5){a.playbackRate=eff;a.defaultPlaybackRate=eff}}else lockTrim[i]=1}else lockTrim[i]=1}
   amixCheck();
   const t=performance.now()<flashUntil?flashMsg:idleMsg;stat.textContent=t;stat.style.opacity=t?1:0;
@@ -904,7 +908,7 @@ let lkTick=0;
 setInterval(()=>{lkTick++;const pads=!!window.__padsOpen;if(pads&&lkTick%3)return;
   for(let i=0;i<2;i++){const o=1-i,a=audios[i],b=audios[o];
     if(!a||!b||!syncOn[i]||!lockOn[i])continue;
-    const go=!amixBusy&&!a.paused&&!b.paused&&!a._rh&&info[i]&&info[o]&&bpmBase[i]&&bpmBase[o]&&lastR[i]&&!(window.SC&&(SC.act[i]||SC.act[o]));
+    const go=!amixBusy&&!a.paused&&!b.paused&&!a._rh&&!b._rh&&info[i]&&info[o]&&bpmBase[i]&&bpmBase[o]&&lastR[i]&&!(window.SC&&(SC.act[i]||SC.act[o]));
     if(!go){lockTrim[i]=1;lockD[i]=NaN;continue}
     let tr=pads?(lockTrim[i]||1):1;
     try{const T=tempoTarget(i,o),d=phaseOff(i,o,T.mu);
@@ -1938,7 +1942,7 @@ const rateBack=o=>{const a=o.a,s=a.playbackRate,t0=performance.now();
 const FXS={
   brake:{start(d,x){const a=audios[d];if(!a||!a.src||a.paused)return null;const o={d,a,r0:a.playbackRate,pp:a.preservesPitch,t0:performance.now(),dur:.25+x*2.5,tm:null};a._rh=1;
       try{a.preservesPitch=false;a.webkitPreservesPitch=false}catch(e){}
-      o.tm=setInterval(()=>{const k=Math.min(1,(performance.now()-o.t0)/1000/o.dur);a.playbackRate=Math.max(.07,o.r0*(1-k))},30);return o},
+      o.tm=setInterval(()=>{const k=Math.min(1,(performance.now()-o.t0)/1000/o.dur);a.playbackRate=Math.max(.07,o.r0*(1-k))},50);return o},
     move(o,x){o.dur=.25+x*2.5},end(o){clearInterval(o.tm);rateBack(o)}},
   reverse:{start(d){const a=audios[d];if(!a||!a.src||a.paused||!SCbuf[d]||!chain[d]){flash('REVERSE: start playing Deck '+L[d]);return null}
       const o={d,a,t0:a.currentTime,at:performance.now(),rate:a.playbackRate,tm:null};SC.down(d);
@@ -1947,10 +1951,10 @@ const FXS={
     end(o){clearInterval(o.tm);SC.up(o.d);try{o.a.currentTime=Math.min(o.a.duration||1e9,o.t0+(performance.now()-o.at)/1000*o.rate)}catch(e){}}},
   pitch:{start(d,x,y){const a=audios[d];if(!a||!a.src)return null;const o={d,a,r0:a.playbackRate,pp:a.preservesPitch};a._rh=1;
       try{a.preservesPitch=false;a.webkitPreservesPitch=false}catch(e){}FXS.pitch.move(o,x,y);return o},
-    move(o,x,y){o.a.playbackRate=Math.max(.1,Math.min(4,o.r0*Math.pow(2,(y-.5)*8/12)))},end(o){rateBack(o)}}};
+    move(o,x,y){const r=Math.max(.1,Math.min(4,o.r0*Math.pow(2,(y-.5)*8/12)));if(Math.abs(o.a.playbackRate-r)>.004)o.a.playbackRate=r},end(o){rateBack(o)}}};
 const fxDotAt=(x,y)=>{fxDot.style.left=x*100+'%';fxDot.style.top=(1-y)*100+'%'};
 const fxXY=e=>{const r=fxPad.getBoundingClientRect(),x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y=Math.max(0,Math.min(1,1-(e.clientY-r.top)/r.height));fxDotAt(x,y);return[x,y]};
-function fxTrail(x,y){const n=performance.now();if(n-fxTrT<28)return;fxTrT=n;const d=document.createElement('div');d.className='fxtr';d.style.left=x*100+'%';d.style.top=(1-y)*100+'%';fxPad.appendChild(d);setTimeout(()=>d.remove(),620)}
+function fxTrail(x,y){const n=performance.now();if(n-fxTrT<70)return;fxTrT=n;const d=document.createElement('div');d.className='fxtr';d.style.left=x*100+'%';d.style.top=(1-y)*100+'%';fxPad.appendChild(d);setTimeout(()=>d.remove(),620)}
 const SYNCF=[1/8,1/4,1/2,3/4,1],SYNCT=['1/8','1/4','1/2','3/4','1'];
 function fxQ(d){if(!fxQuant||!bpmBase[d]||!audios[d]||!audios[d].src)return null;const r=audios[d].playbackRate||1,per=60/(bpmBase[d]*r);let since=0;try{since=beatSince(d,smoothT(d),1)/r}catch(e){}const q=per/4;return{per,wait:q-(since%q)}}
 function fxStart(x,y){const acts=[];const sel=[...fxSet];
@@ -1984,7 +1988,7 @@ fxPad.addEventListener('pointerdown',e=>{e.stopPropagation();
   if(fxMot===1){fxRec=[{t:0,x,y}];fxRecT0=performance.now()}
   if(fxHap&&navigator.vibrate)navigator.vibrate(14);
   fxTrail(x,y);fxLabel();fxMove(x,y)});
-fxPad.addEventListener('pointermove',e=>{if(!fxDown||!fxActs)return;const[x,y]=fxXY(e);if(fxMot===1&&fxRec)fxRec.push({t:performance.now()-fxRecT0,x,y});fxTrail(x,y);fxMove(x,y)});
+fxPad.addEventListener('pointermove',e=>{if(!fxDown||!fxActs)return;const _n=performance.now();if(_n-(window.__fxMv||0)<33)return;window.__fxMv=_n;const[x,y]=fxXY(e);if(fxMot===1&&fxRec)fxRec.push({t:performance.now()-fxRecT0,x,y});fxTrail(x,y);fxMove(x,y)});
 const fxUp=()=>{if(!fxDown)return;fxDown=false;
   if(fxMot===1&&fxRec&&fxRec.length>3&&fxActs){fxMot=2;fxLatch=true;fxPlay();fxLabel();return}
   if(fxHold&&fxActs){fxLatch=true;fxLabel()}else fxEnd()};
