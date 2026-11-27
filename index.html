@@ -683,7 +683,7 @@ function setSync(i,on){
     if(info[i]&&info[o]&&audios[i].src&&audios[o].src&&!audios[i].paused&&!audios[o].paused){try{alignBeat(i,o,T0.mu);settleAlign(i,o,T0.mu)}catch(e){}}}
   else{syncOn[i]=false;lockOn[i]=false;lockTrim[i]=1;lastR[i]=0;lockI[i]=0;lockD[i]=NaN;const a=audios[i],P=window.slPos; // ibalik sa slider ang rate kung lumampas ito sa ±10%
     if(a&&P&&Math.abs(a.playbackRate-P[i])>1e-4&&Math.abs(a.playbackRate-P[i])<.06){a.playbackRate=P[i];a.defaultPlaybackRate=P[i]}}
-  syncBtn[i].classList.toggle('on',syncOn[i]);if(lkBtn[i])lkBtn[i].classList.toggle('on',lockOn[i])}
+  syncBtn[i].classList.toggle('on',syncOn[i]);if(lkBtn[i])lkBtn[i].classList.toggle('on',lockOn[i]);try{bmBtn.classList.toggle('on',!!(syncOn[0]||syncOn[1]))}catch(e){}}
 function phaseOff(s,m,mu){const as=audios[s],am=audios[m],Lr=60/(bpmBase[m]*am.playbackRate);
   let d=waveSince(s,smoothT(s),mu)/as.playbackRate-waveSince(m,smoothT(m),1)/am.playbackRate;return d-Lr*Math.round(d/Lr)}
 function setLock(i,on){const o=1-i;
@@ -819,13 +819,21 @@ function amixCheck(){
   if(rem<=amixLen+2.4){if(!info[y]&&amixLoadT[y]&&performance.now()-amixLoadT[y]<15000)return;startAutomix(x,y)}}
 
 // ---- buttons sa gitna ----
-const syncBtn=[0,1].map(d=>{const b=btn('SYNC '+L[d],58,190,72,40,()=>setSync(d,!syncOn[d]),decks[d]);b.style.fontSize='11px';return b});
+const syncBtn=[0,1].map(d=>{const b=btn('SYNC '+L[d],58,190,72,40,()=>setSync(d,!syncOn[d]),decks[d]);b.style.fontSize='11px';b.style.display='none';return b});
 [0,1].forEach(d=>{const k=btn('SYNC LOCK',-24,190,72,40,()=>setLock(d,!lockOn[d]),decks[d]),f=btn('FADE OUT\n'+fadeLen+'s',-24,250,72,40,()=>{f._h=false;clearTimeout(f._t);f._t=setTimeout(()=>{f._h=true;const o=[2,4,8,16];fadeLen=o[(o.indexOf(fadeLen)+1)%4];fdBtn.forEach(x=>x.textContent='FADE OUT\n'+fadeLen+'s');flash('FADE OUT: '+fadeLen+' second fade')},500)},decks[d]);
   ['pointerup','pointercancel'].forEach(ev=>f.addEventListener(ev,()=>{clearTimeout(f._t);if(ev==='pointerup'&&!f._h)fadeOut(d,fadeLen)}));
-  [k,f].forEach(b=>{b.style.fontSize='11px';b.style.whiteSpace='pre-line';b.style.lineHeight='1.15'});lkBtn[d]=k;fdBtn[d]=f});
+  [k,f].forEach(b=>{b.style.fontSize='11px';b.style.whiteSpace='pre-line';b.style.lineHeight='1.15'});lkBtn[d]=k;k.style.display='none';fdBtn[d]=f});
 var autoBM=false,bmRun=false;
-const bmBtn=btn('BEAT MATCH',-50,256,100,40,()=>{});
-bmBtn.style.display='none';
+// ===== ISANG SYNC para sa Deck A at Deck B (nasa dating lugar ng BEAT MATCH) =====
+// Ang deck na tumutugtog (o mas malakas ang volume) ang sinusundan; ang kabila ang humahabol: tempo + beat. Pindutin ulit = OFF.
+function mainSync(){
+  if(syncOn[0]||syncOn[1]){[0,1].forEach(i=>{if(syncOn[i])setSync(i,false)});flash('SYNC: OFF');return}
+  if(!bpmBase[0]||!bpmBase[1]){flash('SYNC: load both songs first');return}
+  const pl=[!audios[0].paused,!audios[1].paused];let m;
+  if(pl[0]!==pl[1])m=pl[0]?0:1;else{const g=gains();m=g[0]>=g[1]?0:1}
+  const f=1-m;setSync(f,true);
+  if(syncOn[f]){lockOn[f]=true;lockT[f]=0;lockI[f]=0;lockD[f]=NaN;flash('SYNC: Deck '+L[f]+' follows Deck '+L[m]+' (tempo + beat)')}}
+const bmBtn=btn('SYNC',-50,256,100,40,mainSync);bmBtn.style.fontSize='14px';
 const amBtn=btn('AUTOMIX\n'+amixLen+'s',-234,203,58,40,()=>{amBtn._h=false;clearTimeout(amBtn._t);
   amBtn._t=setTimeout(()=>{amBtn._h=true;const o=[6,10,16,24];amixLen=o[(o.indexOf(amixLen)+1)%4];amBtn.textContent='AUTOMIX\n'+amixLen+'s';flash('AUTOMIX: '+amixLen+' second transition')},500)});
 ['pointerup','pointercancel'].forEach(ev=>amBtn.addEventListener(ev,()=>{clearTimeout(amBtn._t);if(ev==='pointerup'&&!amBtn._h)setAutoMix(!autoMix)}));
