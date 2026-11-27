@@ -330,7 +330,7 @@ function makeFx(){
   inn.connect(filt);filt.connect(dry);dry.connect(out);
   const eS=g(),dl=c.createDelay(2),fb=g(),eT=c.createBiquadFilter();eS.gain.value=0;dl.delayTime.value=.3;fb.gain.value=.4;eT.type='lowpass';eT.frequency.value=5000;
   filt.connect(eS);eS.connect(dl);dl.connect(eT);eT.connect(fb);fb.connect(dl);eT.connect(out);
-  if(!revBuf){const L=Math.floor(c.sampleRate*2.2);revBuf=c.createBuffer(2,L,c.sampleRate);
+  if(!revBuf){const L=Math.floor(c.sampleRate*1.4);revBuf=c.createBuffer(2,L,c.sampleRate);
     for(let h=0;h<2;h++){const d=revBuf.getChannelData(h);for(let i=0;i<L;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/L,2.5)}}
   const rS=g(),cv=c.createConvolver(),rT=c.createBiquadFilter(),rO=g();cv.buffer=revBuf;rS.gain.value=0;rT.type='lowpass';rT.frequency.value=6000;rO.gain.value=1.3;
   filt.connect(rS);rS.connect(cv);cv.connect(rT);rT.connect(rO);rO.connect(out);
@@ -388,7 +388,7 @@ function makeFx(){
   return api}
 function ensureCtx(i){
   if(!ctx){{const AC=window.AudioContext||window.webkitAudioContext;let lt='low',bv='auto';try{lt=localStorage.getItem('dj_latency')||'low';bv=localStorage.getItem('dj_buffer')||'auto'}catch(e){}
-    const hint=(bv!=='auto'&&+bv>0)?(+bv/48000):(lt==='stable'?'playback':'interactive');
+    const hint=(bv!=='auto'&&+bv>0)?(+bv/48000):(lt==='stable'?'playback':'balanced');
     try{ctx=new AC({latencyHint:hint})}catch(e){ctx=new AC()}}master=ctx.createAnalyser();master.fftSize=1024;
     limiter=ctx.createDynamicsCompressor();limiter.threshold.value=-2;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=.003;limiter.release.value=.12;
     mixBus=ctx.createGain();mixBus.connect(limiter);limiter.connect(master);
@@ -949,7 +949,7 @@ setAutoEq(true);
 const aeBuf=[null,null],aeTD=new Float32Array(4096),aeLv=[null,null];window.slU=0;
 const aeMean=a=>a.reduce((x,y)=>x+y,0)/a.length;
 setInterval(()=>{
-  if(!autoEq||!ctx)return;
+  if(!autoEq||!ctx||window.__padsOpen)return;   // [PERF] pahinga ang AUTO EQ habang nasa PADS/FX mode (iwas pagbabago ng EQ at FFT sa audio)
   const ms=[null,null],ref0=BANDS.map(f=>-3*Math.log2(Math.max(f,150)/1000)),rm=aeMean(ref0),ref=ref0.map(v=>v-rm);
   for(let i=0;i<2;i++){const c=chain[i],a=audios[i];if(!c||!c.sp||!a||!a.src||a.paused)continue;
     const bins=c.sp.frequencyBinCount;if(!aeBuf[i]||aeBuf[i].length!==bins)aeBuf[i]=new Float32Array(bins);
