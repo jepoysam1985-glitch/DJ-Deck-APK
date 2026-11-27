@@ -681,7 +681,7 @@ function setSync(i,on){
   if(on){const o=1-i;if(!bpmBase[i]||!bpmBase[o]){flash('SYNC: both decks need a BPM');return}
     if(syncOn[o])setSync(o,false);syncOn[i]=true;const T0=applyTempoMatch(i,o,true);
     if(info[i]&&info[o]&&audios[i].src&&audios[o].src&&!audios[i].paused&&!audios[o].paused){try{alignBeat(i,o,T0.mu);settleAlign(i,o,T0.mu)}catch(e){}}}
-  else{syncOn[i]=false;lockOn[i]=false;lockTrim[i]=1;lastR[i]=0;lockI[i]=0;lockD[i]=NaN;const a=audios[i],P=window.slPos; // ibalik sa slider ang rate kung lumampas ito sa ±10%
+  else{syncOn[i]=false;lockOn[i]=false;gridLk[i]=false;lockTrim[i]=1;lastR[i]=0;lockI[i]=0;lockD[i]=NaN;const a=audios[i],P=window.slPos; // ibalik sa slider ang rate kung lumampas ito sa ±10%
     if(a&&P&&Math.abs(a.playbackRate-P[i])>1e-4&&Math.abs(a.playbackRate-P[i])<.06){a.playbackRate=P[i];a.defaultPlaybackRate=P[i]}}
   syncBtn[i].classList.toggle('on',syncOn[i]);if(lkBtn[i])lkBtn[i].classList.toggle('on',lockOn[i]);try{bmBtn.classList.toggle('on',!!(syncOn[0]||syncOn[1]))}catch(e){}}
 function phaseOff(s,m,mu){const as=audios[s],am=audios[m],Lr=60/(bpmBase[m]*am.playbackRate);
@@ -880,13 +880,18 @@ function gridAnchor(i,t){const I=info[i];if(!I||!bpmBase[i])return null;
   return g.a}
 window.gridAnchorRef=gridAnchor;
 window.gridDraw=function(g,w,h,i,t,nb,rt){rt=rt||1;
+  // [SYNC <-> WAVE] kulay ng beatgrid at tag sa wave ng Deck A at B ay galing sa SYNC: amber = humahabol, green = tugma na
+  const _f=syncOn[0]?0:syncOn[1]?1:-1;let TC='255,255,255';
+  if(_f>=0){const lk=gridLk[_f];TC=lk?'125,255,176':'255,200,80';
+    g.shadowBlur=0;g.font='bold '+Math.max(10,Math.round(h*.22))+'px sans-serif';g.textBaseline='top';g.fillStyle='rgb('+TC+')';
+    g.fillText((i===_f?'SYNC \u25C4 '+L[1-_f]:'MASTER')+(lk?' \u2713':''),6,3)}
   if(!gridOn)return;const I=info[i];if(!I||!bpmBase[i])return;
   const a=gridAnchor(i,t);if(a===null||!isFinite(a))return;
   const per=60/bpmBase[i],m=gridMan[i],ref=(m&&m.tok===tok[i])?m.t:(I.intro||0),half=nb/2/RES*rt,bw=w/nb;
   const first=Math.ceil((t-half-a)/per),last=Math.floor((t+half-a)/per);if(last-first>300)return;
   g.shadowBlur=0;
   for(let n=first;n<=last;n++){const bt=a+n*per,x=Math.round(((bt-t)*RES/rt+nb/2)*bw),bar=Math.round((bt-ref)/per),db=((bar%4)+4)%4===0;
-    g.fillStyle=db?'rgba(255,255,255,.95)':'rgba(255,255,255,.4)';
+    g.fillStyle=db?'rgba('+TC+',.95)':'rgba('+TC+',.4)';
     if(db)g.fillRect(x-1,0,2,h);else g.fillRect(x,h*.2,1,h*.6)}};
 function gridDeck(){const pl=[0,1].filter(i=>audios[i]&&audios[i].src&&!audios[i].paused);
   if(pl.length===2){const g=gains();return g[0]>=g[1]?0:1}return pl.length?pl[0]:(audios[0]&&audios[0].src?0:1)}
@@ -916,7 +921,7 @@ setInterval(()=>{lkTick++;const pads=!!window.__padsOpen;if(pads&&lkTick%3)retur
   for(let i=0;i<2;i++){const o=1-i,a=audios[i],b=audios[o];
     if(!a||!b||!syncOn[i]||!lockOn[i])continue;
     const go=!amixBusy&&!a.paused&&!b.paused&&!a._rh&&!b._rh&&info[i]&&info[o]&&bpmBase[i]&&bpmBase[o]&&lastR[i]&&!(window.SC&&(SC.act[i]||SC.act[o]));
-    if(!go){lockTrim[i]=1;lockD[i]=NaN;continue}
+    if(!go){lockTrim[i]=1;lockD[i]=NaN;gridLk[i]=false;continue}
     let tr=lockTrim[i]||1;
     try{const T=tempoTarget(i,o),d=phaseOff(i,o,T.mu);
       if(Math.abs(d)>(pads?.12:.08)){lockD[i]=NaN;if(!pads)tr=1;if(now-lockT[i]>1500){lockT[i]=now;alignBeat(i,o,T.mu)}}
