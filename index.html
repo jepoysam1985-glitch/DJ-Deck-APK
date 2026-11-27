@@ -914,22 +914,24 @@ setInterval(()=>{
   if(eqOpen)updEqInfo()},250);
 
 // ===== [PORT ng phaseStep() ng index.html] beat lock: ang wave beatgrid mismo ang sinusunod =====
-// [PERF v3] banayad para hindi pumutok/mag-lag ang tunog: hakbang-hakbang na trim (hindi tuloy-tuloy), minimum 0.5s bago palitan ang bilis,
-// may pagpapakinis sa error, at bihira ang seek. Sa PADS MODE: seek-lang.
-let lkTick=0;const lockTc=[0,0];
+// [v4] PI control: kapag nagtapat na ang grid lines, TINATANDAAN ng lock ang kulang na bilis (bias) kaya hindi na ito lilihis.
+// Maliliit na hakbang lang (0.1%), min 0.3s bago palitan ang bilis; seek lang kung lampas 50 ms. Sa PADS MODE: seek-lang.
+let lkTick=0;const lockTc=[0,0],lockTt=[0,0];
 setInterval(()=>{lkTick++;const pads=!!window.__padsOpen;if(pads&&lkTick%3)return;const now=performance.now();
   for(let i=0;i<2;i++){const o=1-i,a=audios[i],b=audios[o];
     if(!a||!b||!syncOn[i]||!lockOn[i])continue;
     const go=!amixBusy&&!a.paused&&!b.paused&&!a._rh&&!b._rh&&info[i]&&info[o]&&bpmBase[i]&&bpmBase[o]&&lastR[i]&&!(window.SC&&(SC.act[i]||SC.act[o]));
-    if(!go){lockTrim[i]=1;lockD[i]=NaN;gridLk[i]=false;continue}
+    if(!go){lockTrim[i]=1;lockD[i]=NaN;gridLk[i]=false;lockTt[i]=0;continue}
     let tr=lockTrim[i]||1;
-    try{const T=tempoTarget(i,o),d=phaseOff(i,o,T.mu);
-      if(Math.abs(d)>(pads?.12:.08)){lockD[i]=NaN;if(!pads)tr=1;if(now-lockT[i]>1500){lockT[i]=now;alignBeat(i,o,T.mu)}}
+    try{const T=tempoTarget(i,o),d=phaseOff(i,o,T.mu),dt=lockTt[i]?Math.min(.3,(now-lockTt[i])/1000):0;lockTt[i]=now;
+      if(Math.abs(d)>(pads?.12:.05)){lockD[i]=NaN;if(!pads)tr=1-(lockI[i]||0);if(now-lockT[i]>1500){lockT[i]=now;alignBeat(i,o,T.mu)}}
       else{const dS=isNaN(lockD[i])?d:lockD[i]*.6+d*.4;lockD[i]=dS;
-        if(!pads&&now-lockTc[i]>500){const ad=Math.abs(dS);let want=tr;
-          if(ad<.0025)want=1;else if(ad>.006)want=1-Math.sign(dS)*(ad>.04?.01:ad>.012?.005:.003);
-          if(want!==tr){tr=want;lockTc[i]=now}}}
-      const lk=Math.abs(d)<.008;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' \u2194 '+L[o]);gridLk[i]=lk;
+        if(!pads){const ad=Math.abs(dS);
+          if(ad>.0008)lockI[i]=Math.max(-.01,Math.min(.01,(lockI[i]||0)+.05*dS*dt));   // natututunan ang tunay na lihis ng bilis
+          const kp=ad<.0015?0:.4;                                                       // nasa loob ng 1.5 ms = hawak lang
+          const want=Math.round((1-Math.max(-.02,Math.min(.02,kp*dS+(lockI[i]||0))))*1000)/1000;
+          if(want!==tr&&now-lockTc[i]>300){tr=want;lockTc[i]=now}}}
+      const lk=Math.abs(d)<.004;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' \u2194 '+L[o]);gridLk[i]=lk;
     }catch(e){}
     lockTrim[i]=tr;const eff=lastR[i]*tr;
     if(Math.abs(a.playbackRate-eff)>=.0009){a.playbackRate=eff;a.defaultPlaybackRate=eff}}
