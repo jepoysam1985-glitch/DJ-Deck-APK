@@ -903,18 +903,22 @@ setInterval(()=>{
   if(eqOpen)updEqInfo()},250);
 
 // ===== [PORT ng phaseStep() ng index.html] beat lock: ang wave beatgrid mismo ang sinusunod =====
-// pinagaan: 10x/seg lang, bihirang galawin ang playbackRate, at sa PADS MODE ay seek-lang (mabigat ang audio doon)
-let lkTick=0;
-setInterval(()=>{lkTick++;const pads=!!window.__padsOpen;if(pads&&lkTick%3)return;
+// [PERF v3] banayad para hindi pumutok/mag-lag ang tunog: hakbang-hakbang na trim (hindi tuloy-tuloy), minimum 0.5s bago palitan ang bilis,
+// may pagpapakinis sa error, at bihira ang seek. Sa PADS MODE: seek-lang.
+let lkTick=0;const lockTc=[0,0];
+setInterval(()=>{lkTick++;const pads=!!window.__padsOpen;if(pads&&lkTick%3)return;const now=performance.now();
   for(let i=0;i<2;i++){const o=1-i,a=audios[i],b=audios[o];
     if(!a||!b||!syncOn[i]||!lockOn[i])continue;
     const go=!amixBusy&&!a.paused&&!b.paused&&!a._rh&&!b._rh&&info[i]&&info[o]&&bpmBase[i]&&bpmBase[o]&&lastR[i]&&!(window.SC&&(SC.act[i]||SC.act[o]));
     if(!go){lockTrim[i]=1;lockD[i]=NaN;continue}
-    let tr=pads?(lockTrim[i]||1):1;
+    let tr=lockTrim[i]||1;
     try{const T=tempoTarget(i,o),d=phaseOff(i,o,T.mu);
-      if(Math.abs(d)>(pads?.12:.08)){if(performance.now()-lockT[i]>(pads?1500:800)){lockT[i]=performance.now();lockD[i]=NaN;alignBeat(i,o,T.mu)}}
-      else if(!pads){if(Math.abs(d)>.003){const Lr=60/(bpmBase[o]*b.playbackRate),df=d/Lr;tr=Math.round((1-Math.max(-.02,Math.min(.02,df*.4)))*1000)/1000}}
-      const lk=Math.abs(d)<.006;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' \u2194 '+L[o]);gridLk[i]=lk;
+      if(Math.abs(d)>(pads?.12:.08)){lockD[i]=NaN;if(!pads)tr=1;if(now-lockT[i]>1500){lockT[i]=now;alignBeat(i,o,T.mu)}}
+      else{const dS=isNaN(lockD[i])?d:lockD[i]*.6+d*.4;lockD[i]=dS;
+        if(!pads&&now-lockTc[i]>500){const ad=Math.abs(dS);let want=tr;
+          if(ad<.0025)want=1;else if(ad>.006)want=1-Math.sign(dS)*(ad>.04?.01:ad>.012?.005:.003);
+          if(want!==tr){tr=want;lockTc[i]=now}}}
+      const lk=Math.abs(d)<.008;if(lk&&!gridLk[i])flash('GRIDS MATCHED: Deck '+L[i]+' \u2194 '+L[o]);gridLk[i]=lk;
     }catch(e){}
     lockTrim[i]=tr;const eff=lastR[i]*tr;
     if(Math.abs(a.playbackRate-eff)>=.0009){a.playbackRate=eff;a.defaultPlaybackRate=eff}}
